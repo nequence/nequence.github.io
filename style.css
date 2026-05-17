@@ -212,28 +212,28 @@ body {
 /* ══ CELLS ══════════════════════════════════════════════════════════════════ */
 .cell {
   width: var(--cell); height: var(--cell);
-  background: linear-gradient(145deg, #2e7d2a, #1c5018);
-  border: 1px solid var(--cell-bdr);
+  background: linear-gradient(165deg, #fefef5 55%, #f0e6d0);
+  border: 1px solid #c8b890;
   border-radius: 4px;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   cursor: default; position: relative;
   transition: background .12s, border-color .12s, transform .12s, box-shadow .12s;
   user-select: none; overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(255,255,255,.06), 0 1px 3px rgba(0,0,0,.4);
+  box-shadow: inset 0 1px 2px rgba(255,255,255,.7), 0 1px 3px rgba(0,0,0,.35);
 }
 .cell::after {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 40%;
-  background: linear-gradient(180deg, rgba(255,255,255,.055) 0%, transparent 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,.45) 0%, transparent 100%);
   border-radius: 3px 3px 0 0; pointer-events: none;
 }
-.cell-rank { font-size: .63rem; font-weight: bold; color: #b0e8a8; line-height: 1; z-index: 1; }
-.cell-rank.red { color: #ffb0a8; }
-.cell-suit { font-size: .55rem; color: #80c878; line-height: 1; z-index: 1; }
-.cell-suit.red { color: #ff9090; }
+.cell-rank { font-size: .63rem; font-weight: bold; color: #1a1a1a; line-height: 1; z-index: 1; }
+.cell-rank.red { color: #c0392b; }
+.cell-suit { font-size: .55rem; color: #333; line-height: 1; z-index: 1; }
+.cell-suit.red { color: #c0392b; }
 
 .cell.corner {
-  background: linear-gradient(145deg, #1a5018, #0e3010);
+  background: linear-gradient(145deg, #2a5c26, #1a3c14);
   border-color: #255825;
 }
 .free-star  { font-size: .95rem; color: #ffd700; line-height: 1; z-index: 1; }
@@ -249,7 +249,10 @@ body {
   box-shadow: 0 0 16px var(--gold-hi);
 }
 .cell.valid:hover .cell-rank,
-.cell.valid:hover .cell-suit { color: #fff; }
+.cell.valid:hover .cell-suit,
+.cell.valid:hover .cell-tl,
+.cell.valid:hover .cell-br,
+.cell.valid:hover .cell-mid { color: #fff; }
 
 .cell.valid-remove {
   border-color: #e04040; cursor: pointer;
@@ -260,6 +263,9 @@ body {
   transform: scale(1.08); z-index: 4;
   box-shadow: 0 0 16px #e04040;
 }
+.cell.valid-remove:hover .cell-tl,
+.cell.valid-remove:hover .cell-br,
+.cell.valid-remove:hover .cell-mid { color: #fff; }
 
 @keyframes cellGlow {
   from { box-shadow: 0 0 4px var(--gold-hi); }
@@ -438,13 +444,15 @@ body.locked { pointer-events: none; }
 }
 @media (max-width: 740px) {
   :root { --cell: 36px; --gap: 2px; }
-  .cell-rank { font-size: .54rem; }
-  .cell-suit { font-size: .46rem; }
+  .cell-tl, .cell-br { font-size: .48rem; }
+  .cell-mid { font-size: .72rem; }
+  .cell-ts { font-size: .7em; }
 }
 @media (max-width: 640px) {
   :root { --cell: 30px; --gap: 2px; }
-  .cell-rank { font-size: .46rem; }
-  .cell-suit { display: none; }
+  .cell-tl, .cell-br { font-size: .42rem; }
+  .cell-mid { font-size: .65rem; }
+  .cell-ts { display: none; }
   .free-label { display: none; }
   .free-star { font-size: .8rem; }
   .card { width: 50px; height: 72px; }
@@ -457,7 +465,8 @@ body.locked { pointer-events: none; }
 }
 @media (max-width: 420px) {
   :root { --cell: 26px; }
-  .cell-rank { font-size: .38rem; }
+  .cell-tl, .cell-br { font-size: .36rem; }
+  .cell-mid { font-size: .56rem; }
   .card { width: 44px; height: 62px; }
 }
 
@@ -570,29 +579,26 @@ body.locked { pointer-events: none; }
 .cell-tl {
   position: absolute; top: 2px; left: 3px;
   font-size: .52rem; font-weight: bold;
-  color: #b0e8a8; line-height: 1.15; z-index: 1;
+  color: #1a1a1a; line-height: 1.15; z-index: 1;
   display: flex; flex-direction: column; align-items: center;
 }
 .cell-br {
   position: absolute; bottom: 2px; right: 3px;
   font-size: .52rem; font-weight: bold;
-  color: #b0e8a8; line-height: 1.15; z-index: 1;
+  color: #1a1a1a; line-height: 1.15; z-index: 1;
   transform: rotate(180deg);
   display: flex; flex-direction: column; align-items: center;
 }
 .cell-mid {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  font-size: .85rem; color: #90c878; line-height: 1; z-index: 1;
+  font-size: .85rem; color: #222; line-height: 1; z-index: 1;
 }
 .cell-ts { font-size: .78em; line-height: 1; }
-.cell-tl.red, .cell-br.red { color: #ffb0a8; }
-.cell-mid.red { color: #ff9090; }
+.cell-tl.red, .cell-br.red { color: #c0392b; }
+.cell-mid.red { color: #c0392b; }
 
-/* Jack cells get a subtle tint */
-.cell.jack-cell {
-  background: linear-gradient(145deg, #2e6040, #1c4030);
-}
+/* ══ BOARD CELL — SEQ HIGHLIGHT ════════════════════════════════════════════ */
 
 /* ══ AVATAR PICKER ══════════════════════════════════════════════════════════ */
 .avatar-row-label {

@@ -23,14 +23,14 @@ const urlCode = (location.hash.slice(1) || '').toUpperCase().trim();
 /* ── Avatar options ──────────────────────────────────────────────────────── */
 const AVATARS = ['🦁','🐯','🐺','🦊','🐻','🐸','🐵','🦄','🐲','🦅','🤠','😎','🧙','👑','🥷','🎭'];
 
-/* ── Board layout (official Sequence — Jacks in center) ──────────────────── */
+/* ── Board layout (official Sequence board — no Jacks on board) ──────────── */
 const BOARD_LAYOUT = [
   [null, '2S','3S','4S','5S','6S','7S','8S','9S', null],
   ['6C', '5C','4C','3C','2C','AH','KH','QH','10H','10S'],
   ['7C', 'AS','2D','3D','4D','5D','6D','7D','8D', 'QS'],
   ['8C', 'KS','6C','5H','4H','3H','2H','AD','9D', 'KS'],
-  ['9C', 'QS','7C','6H','JH','JD','3H','KC','10D','AS'],
-  ['10C','10S','8C','7H','JC','JS','QH','AC','QD','2S'],
+  ['9C', 'QS','7C','6H','5H','4H','3H','KC','10D','AS'],
+  ['10C','10S','8C','7H','6H','5H','QH','AC','QD','2S'],
   ['QC', '9S','9C','8H','9H','10H','KH','KD','2D','3S'],
   ['KC', '8S','10C','QC','KC','AC','AD','QD','3D','4S'],
   ['AC', '7S','6S','5S','4S','3S','2S','2H','3H','5S'],
@@ -516,8 +516,6 @@ const Renderer = {
           const rc  = red ? ' red' : '';
           const rk  = cardRank(code);
           const sym = symOf(code);
-          const isJ = isJack(code);
-          if (isJ) cell.classList.add('jack-cell');
           cell.innerHTML =
             `<span class="cell-tl${rc}">${rk}<span class="cell-ts">${sym}</span></span>` +
             `<span class="cell-mid${rc}">${sym}</span>` +
@@ -863,9 +861,9 @@ function animateCardDraw(playerId) {
   let handEl  = document.getElementById('hand-col-' + playerId);
   if (isMe) {
     const bar = document.getElementById('active-hand');
-    if (bar && getComputedStyle(bar).display !== 'none') handEl = bar;
+    if (bar && bar.offsetParent !== null) handEl = bar;
   }
-  if (!handEl) return;
+  if (!handEl || handEl.offsetParent === null) return;
 
   const fromR = deckEl.getBoundingClientRect();
   const toR   = handEl.getBoundingClientRect();
