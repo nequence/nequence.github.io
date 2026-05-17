@@ -14,7 +14,6 @@
     <div class="game-logo">♠ SEQUENCE ♠</div>
     <div class="game-subtitle">Online Multiplayer</div>
 
-    <!-- Shown only when opened via invite link -->
     <div id="invite-header" class="hidden">
       <div class="invite-tag">You're invited to room</div>
       <div id="invite-code-badge" class="invite-code-badge"></div>
@@ -22,11 +21,9 @@
 
     <input type="text" id="name-input" class="txt-input" placeholder="Your name…" maxlength="20" autocomplete="off"/>
 
-    <!-- Avatar picker -->
     <div class="avatar-row-label">Pick your avatar</div>
     <div id="avatar-picker" class="avatar-picker"></div>
 
-    <!-- Normal landing: create + join -->
     <div id="normal-landing">
       <button id="create-btn" class="pcount-btn">Create Room</button>
       <div class="landing-divider">— or join a room —</div>
@@ -36,7 +33,6 @@
       </div>
     </div>
 
-    <!-- Invite landing: just a join button -->
     <button id="invite-join-btn" class="pcount-btn hidden">Join Room →</button>
 
     <div id="landing-error" class="error-msg"></div>
@@ -55,7 +51,7 @@
   <div id="lobby-box">
     <div class="game-logo">♠ SEQUENCE ♠</div>
     <div class="room-code-row">
-      <span class="room-code-label">Room Code</span>
+      <span class="room-code-label">Room</span>
       <span id="room-code-display" class="room-code-val">------</span>
       <button id="copy-link-btn" class="btn-sm">⎘ Copy Link</button>
     </div>
@@ -67,6 +63,25 @@
       </div>
     </div>
 
+    <!-- Team management (host only) -->
+    <div id="team-setup" class="hidden">
+      <div class="team-setup-header">
+        <span class="section-label">Teams</span>
+        <div id="team-count-btns" class="team-count-btns">
+          <button class="team-count-opt active" data-count="2">2</button>
+          <button class="team-count-opt" data-count="3">3</button>
+          <button class="team-count-opt" data-count="4">4</button>
+        </div>
+      </div>
+      <div id="team-columns" class="team-columns"></div>
+    </div>
+
+    <!-- Team join (non-host) -->
+    <div id="team-view" class="hidden">
+      <div class="section-label">Pick Your Team</div>
+      <div id="team-join-btns" class="team-join-btns"></div>
+    </div>
+
     <div id="lobby-waiting-msg" class="lobby-wait">Waiting for the host to start…</div>
     <button id="start-game-btn" class="pcount-btn hidden">▶ Start Game</button>
     <button id="leave-lobby-btn" class="btn-danger-sm">Leave Room</button>
@@ -75,9 +90,11 @@
 
 <!-- ═══════════════════ GAME ════════════════════ -->
 <div id="game-screen" class="hidden">
-  <div id="hud">
-    <div id="turn-banner">Player 1's Turn</div>
-    <div id="score-strip" aria-label="Sequence scores"></div>
+
+  <!-- Top header bar -->
+  <div id="game-header">
+    <div id="room-badge-header" class="room-badge">ROOM: ------</div>
+    <div id="turn-banner">Your Turn</div>
     <div id="deck-info">
       <div id="deck-pile">
         <div class="deck-card-b"></div>
@@ -87,20 +104,32 @@
       <span id="deck-count">104</span>&thinsp;cards
     </div>
   </div>
-  <div id="main-area">
-    <div id="left-panel" class="side-panel"></div>
-    <div id="board-wrap">
-      <div id="board-container">
-        <div id="board"></div>
-        <svg id="seq-lines" xmlns="http://www.w3.org/2000/svg" overflow="visible"></svg>
+
+  <!-- Score strip -->
+  <div id="score-strip"></div>
+
+  <!-- Table: seats + board -->
+  <div id="table-wrap">
+    <div id="seats-top" class="seat-zone"></div>
+    <div id="table-middle">
+      <div id="seats-left" class="seat-zone seat-zone-v"></div>
+      <div id="board-wrap">
+        <div id="board-container">
+          <div id="board"></div>
+          <svg id="seq-lines" xmlns="http://www.w3.org/2000/svg" overflow="visible"></svg>
+        </div>
       </div>
+      <div id="seats-right" class="seat-zone seat-zone-v"></div>
     </div>
-    <div id="right-panel" class="side-panel"></div>
+    <div id="seats-bottom" class="seat-zone"></div>
   </div>
+
+  <!-- Mobile hand (bottom bar) -->
   <div id="bottom-bar">
     <div id="active-hand-label"></div>
     <div id="active-hand" class="hand-row"></div>
   </div>
+
   <div id="jack-legend">
     <span class="leg wild">♥♦ J = Place anywhere</span>
     <span class="leg-sep">·</span>

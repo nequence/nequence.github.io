@@ -4,7 +4,6 @@
    SEQUENCE  —  Online Multiplayer via Firebase RTDB
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Firebase ────────────────────────────────────────────────────────────── */
 firebase.initializeApp({ databaseURL: 'https://nequence-default-rtdb.firebaseio.com' });
 const db = firebase.database();
 
@@ -17,13 +16,15 @@ let myCode   = '';
 let roomRef  = null;
 let roomOff  = null;
 
-/* ── URL hash (invite link) ──────────────────────────────────────────────── */
 const urlCode = (location.hash.slice(1) || '').toUpperCase().trim();
 
-/* ── Avatar options ──────────────────────────────────────────────────────── */
+/* ── Constants ───────────────────────────────────────────────────────────── */
 const AVATARS = ['🦁','🐯','🐺','🦊','🐻','🐸','🐵','🦄','🐲','🦅','🤠','😎','🧙','👑','🥷','🎭'];
 
-/* ── Board layout (official Sequence board — no Jacks on board) ──────────── */
+const TEAM_COLORS = ['#c0392b','#1a5cb5','#1e8449','#c89010'];
+const TEAM_CLS    = ['team-0','team-1','team-2','team-3'];
+const TEAM_LABELS = ['Red','Blue','Green','Gold'];
+
 const BOARD_LAYOUT = [
   [null, '2S','3S','4S','5S','6S','7S','8S','9S', null],
   ['6C', '5C','4C','3C','2C','AH','KH','QH','10H','10S'],
@@ -42,7 +43,6 @@ const SUIT_RED  = { H:true, D:true, C:false, S:false };
 const DIRS      = [[0,1],[1,0],[1,1],[1,-1]];
 const WIN_SEQS  = 2;
 
-/* ── Pip layouts: [x%, y%, flip] per rank ────────────────────────────────── */
 const PIP_LAYOUTS = {
   '2':  [[50,26,0],[50,74,1]],
   '3':  [[50,22,0],[50,50,0],[50,78,1]],
@@ -55,17 +55,6 @@ const PIP_LAYOUTS = {
   '10': [[32,18,0],[68,18,0],[32,33,0],[68,33,0],[50,43,0],[50,57,1],[32,67,1],[68,67,1],[32,82,1],[68,82,1]],
 };
 
-const P_COLORS = [
-  { color:'#c0392b', chipClass:'p1' },
-  { color:'#1a5cb5', chipClass:'p2' },
-  { color:'#1e8449', chipClass:'p3' },
-  { color:'#c89010', chipClass:'p4' },
-  { color:'#7d3c98', chipClass:'p5' },
-  { color:'#d4601a', chipClass:'p6' },
-  { color:'#c0388a', chipClass:'p7' },
-  { color:'#0fa8b8', chipClass:'p8' },
-];
-
 /* ── Card helpers ────────────────────────────────────────────────────────── */
 const cardRank      = c => c.slice(0, -1);
 const cardSuit      = c => c.slice(-1);
@@ -75,40 +64,25 @@ const isJack        = c => cardRank(c) === 'J';
 const isTwoEyedJack = c => isJack(c) && isRed(c);
 const isOneEyedJack = c => isJack(c) && !isRed(c);
 
-/* ── Build card face HTML (pip cards, Aces, face cards) ──────────────────── */
 function buildCardFaceHTML(code) {
   const rk  = cardRank(code);
   const sym = symOf(code);
   const red = isRed(code);
   const rc  = red ? ' red' : '';
-
   const corners =
     `<span class="card-tl${rc}">${rk}<br><small>${sym}</small></span>` +
     `<span class="card-br${rc}">${rk}<br><small>${sym}</small></span>`;
-
   let badge = '';
   if (isTwoEyedJack(code))      badge = '<span class="jack-badge wild">WILD</span>';
   else if (isOneEyedJack(code)) badge = '<span class="jack-badge remove">RMV</span>';
-
-  // Face cards
   if (rk === 'J' || rk === 'Q' || rk === 'K') {
     return corners +
-      `<div class="card-face-body${rc}">` +
-        `<span class="face-letter${rc}">${rk}</span>` +
-        `<span class="face-sym${rc}">${sym}</span>` +
-      `</div>` +
+      `<div class="card-face-body${rc}"><span class="face-letter${rc}">${rk}</span><span class="face-sym${rc}">${sym}</span></div>` +
       badge;
   }
-
-  // Ace — single large pip
-  if (rk === 'A') {
-    return corners + `<span class="card-ace${rc}">${sym}</span>`;
-  }
-
-  // Pip cards
+  if (rk === 'A') return corners + `<span class="card-ace${rc}">${sym}</span>`;
   const layout = PIP_LAYOUTS[rk];
   if (!layout) return corners + `<span class="card-center${rc}">${sym}</span>`;
-
   let html = corners + '<div class="card-pip-area">';
   layout.forEach(([x, y, flip]) => {
     html += `<span class="pip-s${rc}${flip ? ' pip-down' : ''}" style="left:${x}%;top:${y}%">${sym}</span>`;
@@ -116,42 +90,43 @@ function buildCardFaceHTML(code) {
   return html + '</div>';
 }
 
-function handSize(n) {
-  if (n <= 2) return 7;
-  if (n <= 6) return 6;
-  return 5;
-}
+/* ── Team helpers ────────────────────────────────────────────────────────── */
+const getTeamIdx   = pid => G.teamAssignments[pid] ?? 0;
+const teamColor    = pid => TEAM_COLORS[getTeamIdx(pid)] || TEAM_COLORS[0];
+const teamChipCls  = pid => TEAM_CLS[getTeamIdx(pid)] || 'team-0';
 
+/* ── Misc ────────────────────────────────────────────────────────────────── */
+function handSize(n) { return n <= 2 ? 7 : n <= 6 ? 6 : 5; }
 function genCode() {
   const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({ length: 6 }, () => ch[Math.floor(Math.random() * ch.length)]).join('');
 }
-
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
 const pack   = arr => (arr || []).join(',');
 const unpack = str => str ? str.split(',').filter(Boolean) : [];
 
-/* ── Local game state ────────────────────────────────────────────────────── */
+/* ── Local state ─────────────────────────────────────────────────────────── */
 const G = {
-  players:      [],
-  deck:         [],
-  hands:        {},
-  boardState:   {},
-  seqCells:     new Set(),
-  seqLines:     [],
-  scores:       {},
-  currentIdx:   0,
-  winner:       null,
-  selectedCard: null,
-  selIdx:       null,
-  animating:    false,
-  panelsBuilt:  false,
-  get cur()     { return this.players[this.currentIdx]; },
+  players:         [],
+  deck:            [],
+  hands:           {},
+  boardState:      {},
+  seqCells:        new Set(),
+  seqLines:        [],
+  scores:          {},      // team scores: { 0: n, 1: n, ... }
+  teamAssignments: {},      // { playerId: teamIdx }
+  teamCount:       2,
+  currentIdx:      0,
+  winner:          null,   // winning team index or null
+  selectedCard:    null,
+  selIdx:          null,
+  animating:       false,
+  seatsBuilt:      false,
+  get cur() { return this.players[this.currentIdx]; },
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
-   AVATAR PICKER INIT
+   AVATAR PICKER
    ══════════════════════════════════════════════════════════════════════════ */
 
 function buildAvatarPicker() {
@@ -171,12 +146,11 @@ function buildAvatarPicker() {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   LANDING MODE SETUP
+   LANDING
    ══════════════════════════════════════════════════════════════════════════ */
 
 function setupLanding() {
   if (!urlCode) return;
-  // Invite mode: hide normal create/join, show invite UI
   document.getElementById('normal-landing').classList.add('hidden');
   document.getElementById('invite-header').classList.remove('hidden');
   document.getElementById('invite-code-badge').textContent = urlCode;
@@ -191,18 +165,17 @@ function setupLanding() {
 async function createRoom() {
   myName = document.getElementById('name-input').value.trim();
   if (!myName) return showError('Enter your name first');
-
   const code = genCode();
   myCode  = code;
   roomRef = db.ref('rooms/' + code);
-
   await roomRef.set({
-    hostId:    myId,
-    status:    'lobby',
-    createdAt: Date.now(),
-    players:   { [myId]: { name: myName, avatar: myAvatar, joinOrder: 0 } },
+    hostId:          myId,
+    status:          'lobby',
+    createdAt:       Date.now(),
+    teamCount:       2,
+    teamAssignments: { [myId]: 0 },
+    players:         { [myId]: { name: myName, avatar: myAvatar, joinOrder: 0 } },
   });
-
   location.hash = code;
   subscribeRoom();
   showView('lobby-screen');
@@ -211,13 +184,9 @@ async function createRoom() {
 
 async function joinRoom(code) {
   myName = document.getElementById('name-input').value.trim();
-  if (!myName) {
-    document.getElementById('name-input').focus();
-    return showError('Enter your name first');
-  }
+  if (!myName) { document.getElementById('name-input').focus(); return showError('Enter your name first'); }
   code = code.toUpperCase().trim();
   if (code.length !== 6) return showError('Enter a valid 6-character room code');
-
   const snap = await db.ref('rooms/' + code).get();
   if (!snap.exists()) return showError('Room not found — check the code');
   const room = snap.val();
@@ -228,9 +197,16 @@ async function joinRoom(code) {
   myCode  = code;
   roomRef = db.ref('rooms/' + code);
 
-  await roomRef.child('players').child(myId).set({
-    name: myName, avatar: myAvatar, joinOrder: count,
-  });
+  // Auto-assign to smallest team
+  const assignments = room.teamAssignments || {};
+  const tc = room.teamCount || 2;
+  const teamCounts = Array.from({ length: tc }, (_, i) =>
+    Object.values(assignments).filter(t => t === i).length
+  );
+  const smallestTeam = teamCounts.indexOf(Math.min(...teamCounts));
+
+  await roomRef.child('players').child(myId).set({ name: myName, avatar: myAvatar, joinOrder: count });
+  await roomRef.child('teamAssignments').child(myId).set(smallestTeam);
 
   location.hash = code;
   subscribeRoom();
@@ -255,24 +231,27 @@ function subscribeRoom() {
 async function startGame() {
   const snap = await roomRef.get();
   const room = snap.val();
-
-  // Only host can start
   if (room.hostId !== myId) return;
-  if ((room.players ? Object.keys(room.players).length : 0) < 2)
-    return showError('Need at least 2 players');
+
+  const playerIds = Object.keys(room.players || {});
+  if (playerIds.length < 2) return showError('Need at least 2 players');
+
+  const tc          = room.teamCount || 2;
+  const assignments = room.teamAssignments || {};
+  const teamCounts  = Array.from({ length: tc }, (_, i) =>
+    playerIds.filter(id => (assignments[id] ?? 0) === i).length
+  );
+  if (teamCounts.some(c => c === 0)) return showError('Each team needs at least 1 player');
 
   const entries = Object.entries(room.players || {})
     .sort(([, a], [, b]) => a.joinOrder - b.joinOrder);
-
-  const n    = entries.length;
-  const hs   = handSize(n);
+  const n   = entries.length;
+  const hs  = handSize(n);
   const deck = shuffle(buildDeck());
-  const hands = {}, scores = {};
-
-  entries.forEach(([id]) => {
-    hands[id]  = pack(deck.splice(0, hs));
-    scores[id] = 0;
-  });
+  const hands = {};
+  const teamScores = {};
+  entries.forEach(([id]) => { hands[id] = pack(deck.splice(0, hs)); });
+  for (let i = 0; i < tc; i++) teamScores[i] = 0;
 
   await roomRef.update({
     status:             'playing',
@@ -283,54 +262,86 @@ async function startGame() {
     boardState:         {},
     seqCells:           '',
     seqLines:           '[]',
-    scores,
+    teamScores,
     winner:             null,
   });
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   STATE SYNC  (Firebase → local G → render)
+   TEAM MANAGEMENT
+   ══════════════════════════════════════════════════════════════════════════ */
+
+async function setTeamCount(tc) {
+  const snap = await roomRef.get();
+  const room = snap.val();
+  if (room.hostId !== myId) return;
+  const playerIds = Object.keys(room.players || {});
+  const newAssignments = {};
+  playerIds.forEach((id, i) => { newAssignments[id] = i % tc; });
+  await roomRef.update({ teamCount: tc, teamAssignments: newAssignments });
+}
+
+async function moveToTeam(pid, teamIdx) {
+  const snap = await roomRef.get();
+  const room = snap.val();
+  if (room.hostId !== myId && pid !== myId) return;
+  await roomRef.child('teamAssignments').child(pid).set(teamIdx);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   STATE SYNC
    ══════════════════════════════════════════════════════════════════════════ */
 
 function applyRoomState(room) {
   if (G.animating) return;
 
-  // Snapshot hand sizes before applying new state (to detect card draws)
   const prevHandSizes = {};
   G.players.forEach(p => { prevHandSizes[p.id] = (G.hands[p.id] || []).length; });
 
   const turnOrder = unpack(room.turnOrder);
-  G.players    = turnOrder.map((id, i) => ({
-    id,
-    name:      (room.players[id] || {}).name   || id,
-    avatar:    (room.players[id] || {}).avatar  || '🃏',
-    color:     P_COLORS[i].color,
-    chipClass: P_COLORS[i].chipClass,
-  }));
+  G.teamAssignments = room.teamAssignments || {};
+  G.teamCount       = room.teamCount || 2;
+
+  G.players = turnOrder.map(id => {
+    const ti = G.teamAssignments[id] ?? 0;
+    return {
+      id,
+      name:      (room.players[id] || {}).name   || id,
+      avatar:    (room.players[id] || {}).avatar  || '🃏',
+      teamIdx:   ti,
+      color:     TEAM_COLORS[ti] || TEAM_COLORS[0],
+      chipClass: TEAM_CLS[ti]    || 'team-0',
+    };
+  });
+
   G.deck       = unpack(room.deck);
   G.hands      = {};
   turnOrder.forEach(id => { G.hands[id] = unpack((room.hands || {})[id]); });
   G.boardState = room.boardState || {};
   G.seqCells   = new Set(unpack(room.seqCells));
   G.seqLines   = JSON.parse(room.seqLines || '[]');
-  G.scores     = room.scores || {};
+  G.scores     = room.teamScores || {};
   G.currentIdx = room.currentPlayerIndex || 0;
-  G.winner     = room.winner || null;
+  G.winner     = room.winner !== undefined ? room.winner : null;
 
   showView('game-screen');
 
-  const needBuild = !G.panelsBuilt || document.querySelectorAll('.player-block').length !== G.players.length;
+  // Update room badge in header
+  const badge = document.getElementById('room-badge-header');
+  if (badge) badge.textContent = 'ROOM: ' + myCode;
+
+  const needBuild = !G.seatsBuilt ||
+    document.querySelectorAll('.player-seat').length !== G.players.length;
   if (needBuild) {
-    Renderer.buildPanels();
+    Renderer.buildSeats();
     Renderer.buildScoreStrip();
-    G.panelsBuilt = true;
+    G.seatsBuilt = true;
   }
 
   Renderer.renderBoard();
   Renderer.renderHands();
   Renderer.updateScore();
 
-  // Animate card draw for remote players whose hand grew
   G.players.forEach(p => {
     if (p.id !== myId && (G.hands[p.id] || []).length > (prevHandSizes[p.id] || 0)) {
       animateCardDraw(p.id);
@@ -346,68 +357,122 @@ function applyRoomState(room) {
     });
   });
 
-  if (room.status === 'finished' && G.winner) {
-    const w = G.players.find(p => p.id === G.winner);
-    if (w) showWin(w);
-  }
+  if (room.status === 'finished' && G.winner !== null) showWin(G.winner);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   LOBBY RENDERER  (circle table)
+   LOBBY RENDERER
    ══════════════════════════════════════════════════════════════════════════ */
 
 function renderLobby(room) {
   if (!document.getElementById('game-screen').classList.contains('hidden')) return;
-
   showView('lobby-screen');
   document.getElementById('room-code-display').textContent = myCode;
 
-  const isHost = room.hostId === myId;
-  document.getElementById('start-game-btn').classList.toggle('hidden', !isHost);
-  document.getElementById('lobby-waiting-msg').classList.toggle('hidden', isHost);
-
-  const players = Object.entries(room.players || {})
+  const isHost      = room.hostId === myId;
+  const tc          = room.teamCount || 2;
+  const assignments = room.teamAssignments || {};
+  const players     = Object.entries(room.players || {})
     .sort(([, a], [, b]) => a.joinOrder - b.joinOrder);
 
+  document.getElementById('start-game-btn').classList.toggle('hidden', !isHost);
+  document.getElementById('lobby-waiting-msg').classList.toggle('hidden', isHost);
+  document.getElementById('team-setup').classList.toggle('hidden', !isHost);
+  document.getElementById('team-view').classList.toggle('hidden', isHost);
+
+  // Circle seating
   const table = document.getElementById('lobby-table');
-  // Remove old seats (keep the label)
   table.querySelectorAll('.lobby-seat').forEach(s => s.remove());
-
-  const n  = players.length;
-  // Table is 280×180px; seats orbit inside the oval
+  const n = players.length;
   const cx = 140, cy = 90, rx = 108, ry = 72;
-
   players.forEach(([id, p], i) => {
-    const angle = (2 * Math.PI * i / n) - Math.PI / 2;
-    const x     = cx + rx * Math.cos(angle);
-    const y     = cy + ry * Math.sin(angle);
-    const color = P_COLORS[i].color;
-
-    const seat  = document.createElement('div');
+    const angle  = (2 * Math.PI * i / n) - Math.PI / 2;
+    const x      = cx + rx * Math.cos(angle);
+    const y      = cy + ry * Math.sin(angle);
+    const ti     = assignments[id] ?? 0;
+    const color  = TEAM_COLORS[ti] || TEAM_COLORS[0];
+    const seat   = document.createElement('div');
     seat.className = 'lobby-seat' + (id === myId ? ' lobby-seat-me' : '');
-    seat.style.left      = x + 'px';
-    seat.style.top       = y + 'px';
+    seat.style.left = x + 'px';
+    seat.style.top  = y + 'px';
     seat.style.borderColor = color;
-
-    const av  = document.createElement('div');
-    av.className = 'lobby-seat-avatar';
-    av.textContent = p.avatar || '🃏';
-
-    const nm  = document.createElement('div');
-    nm.className = 'lobby-seat-name';
-    nm.style.color = color;
-    nm.textContent = p.name
-      + (id === myId      ? ' (you)' : '')
-      + (id === room.hostId ? ' 👑'  : '');
-
-    seat.appendChild(av);
-    seat.appendChild(nm);
+    seat.innerHTML =
+      `<div class="lobby-seat-avatar">${p.avatar || '🃏'}</div>` +
+      `<div class="lobby-seat-name" style="color:${color}">` +
+        p.name + (id === myId ? ' (you)' : '') + (id === room.hostId ? ' 👑' : '') +
+      `</div>` +
+      `<div class="lobby-seat-team" style="color:${color}">${TEAM_LABELS[ti]}</div>`;
     table.appendChild(seat);
   });
+
+  // Host: team columns
+  if (isHost) {
+    document.querySelectorAll('.team-count-opt').forEach(btn => {
+      btn.classList.toggle('active', parseInt(btn.dataset.count) === tc);
+    });
+    renderTeamColumns(room);
+  }
+
+  // Non-host: team join buttons
+  if (!isHost) {
+    const joinArea = document.getElementById('team-join-btns');
+    joinArea.innerHTML = '';
+    for (let t = 0; t < tc; t++) {
+      const memberCount = players.filter(([id]) => (assignments[id] ?? 0) === t).length;
+      const amOnTeam    = (assignments[myId] ?? 0) === t;
+      const btn         = document.createElement('button');
+      btn.className = 'team-join-opt' + (amOnTeam ? ' active' : '');
+      btn.style.setProperty('--tc', TEAM_COLORS[t]);
+      btn.innerHTML =
+        `<span class="tjb-dot" style="background:${TEAM_COLORS[t]}"></span>` +
+        `<span class="tjb-label">Team ${TEAM_LABELS[t]}</span>` +
+        `<span class="tjb-count">${memberCount}p</span>`;
+      if (!amOnTeam) btn.addEventListener('click', () => moveToTeam(myId, t));
+      joinArea.appendChild(btn);
+    }
+  }
+}
+
+function renderTeamColumns(room) {
+  const tc          = room.teamCount || 2;
+  const assignments = room.teamAssignments || {};
+  const players     = Object.entries(room.players || {})
+    .sort(([, a], [, b]) => a.joinOrder - b.joinOrder);
+  const cols = document.getElementById('team-columns');
+  cols.innerHTML = '';
+
+  for (let t = 0; t < tc; t++) {
+    const col = document.createElement('div');
+    col.className = 'team-col';
+    col.style.borderColor = TEAM_COLORS[t];
+    col.innerHTML = `<div class="team-col-header" style="color:${TEAM_COLORS[t]}">Team ${TEAM_LABELS[t]}</div>`;
+
+    const members = players.filter(([id]) => (assignments[id] ?? 0) === t);
+    members.forEach(([id, p]) => {
+      const row = document.createElement('div');
+      row.className = 'team-member-row' + (id === myId ? ' team-member-me' : '');
+      row.innerHTML = `<span class="tmr-av">${p.avatar || '🃏'}</span><span class="tmr-name">${p.name}</span>`;
+
+      // Move-to-team selector
+      const sel = document.createElement('select');
+      sel.className = 'team-move-sel';
+      for (let i = 0; i < tc; i++) {
+        const opt = document.createElement('option');
+        opt.value = i; opt.textContent = TEAM_LABELS[i];
+        if (i === t) opt.selected = true;
+        sel.appendChild(opt);
+      }
+      sel.addEventListener('change', () => moveToTeam(id, parseInt(sel.value)));
+      row.appendChild(sel);
+      col.appendChild(row);
+    });
+
+    cols.appendChild(col);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   DECK
+   DECK / SHUFFLE
    ══════════════════════════════════════════════════════════════════════════ */
 
 function buildDeck() {
@@ -441,13 +506,15 @@ const BM = {
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
-   RULE ENGINE
+   RULE ENGINE  (team-aware)
    ══════════════════════════════════════════════════════════════════════════ */
 
 const RE = {
   cellBelongsTo(r, c, pid) {
     if (BM.isCorner(r, c)) return true;
-    return BM.owner(r, c) === pid;
+    const owner = BM.owner(r, c);
+    if (!owner) return false;
+    return (G.teamAssignments[pid] ?? 0) === (G.teamAssignments[owner] ?? 0);
   },
 
   lineKey(line) {
@@ -488,7 +555,8 @@ const RE = {
   canRemove(r, c) {
     if (BM.isCorner(r, c)) return false;
     const owner = BM.owner(r, c);
-    if (!owner || owner === G.cur.id) return false;
+    if (!owner) return false;
+    if ((G.teamAssignments[G.cur.id] ?? 0) === (G.teamAssignments[owner] ?? 0)) return false;
     if (BM.isSeqCell(r, c)) return false;
     return true;
   },
@@ -499,6 +567,63 @@ const RE = {
    ══════════════════════════════════════════════════════════════════════════ */
 
 const Renderer = {
+  _seatPositions(n) {
+    return ({
+      2: ['bottom','top'],
+      3: ['bottom','top-left','top-right'],
+      4: ['bottom','left','top','right'],
+      5: ['bottom','left','top-left','top-right','right'],
+      6: ['bottom','left','top-left','top','top-right','right'],
+      7: ['bottom','left','top-left','top','top-right','right','bottom-right'],
+      8: ['bottom','bottom-left','left','top-left','top','top-right','right','bottom-right'],
+    })[n] || ['bottom','top'];
+  },
+
+  _seatZone(pos) {
+    if (pos.includes('top'))    return 'seats-top';
+    if (pos === 'left')         return 'seats-left';
+    if (pos === 'right')        return 'seats-right';
+    return 'seats-bottom';
+  },
+
+  buildSeats() {
+    ['seats-top','seats-left','seats-right','seats-bottom'].forEach(id =>
+      { document.getElementById(id).innerHTML = ''; }
+    );
+
+    const n       = G.players.length;
+    const myIdx   = G.players.findIndex(p => p.id === myId);
+    const pivot   = myIdx < 0 ? 0 : myIdx;
+    const ordered = [...G.players.slice(pivot), ...G.players.slice(0, pivot)];
+    const positions = this._seatPositions(n);
+
+    ordered.forEach((p, i) => {
+      const pos    = positions[i] || 'top';
+      const zone   = this._seatZone(pos);
+      const isMe   = p.id === myId;
+      const color  = p.color;
+      const isVert = pos === 'left' || pos === 'right';
+
+      const seat = document.createElement('div');
+      seat.className = `player-seat pos-${pos}${isMe ? ' seat-me' : ''}`;
+      seat.id = 'seat-' + p.id;
+      seat.setAttribute('data-pos', pos);
+      seat.setAttribute('data-vert', isVert ? '1' : '0');
+
+      seat.innerHTML =
+        `<div class="seat-header">` +
+          `<div class="seat-avatar" style="border-color:${color};box-shadow:0 0 0 2px ${color}22">${p.avatar || '🃏'}</div>` +
+          `<div class="seat-meta">` +
+            `<div class="seat-name">${p.name}${isMe ? ' ✦' : ''}</div>` +
+            `<div class="seat-team" style="color:${color}">Team ${TEAM_LABELS[p.teamIdx ?? 0]}</div>` +
+          `</div>` +
+        `</div>` +
+        `<div class="seat-hand${isVert ? ' seat-hand-v' : ''}" id="seat-hand-${p.id}"></div>`;
+
+      document.getElementById(zone).appendChild(seat);
+    });
+  },
+
   renderBoard() {
     const board = document.getElementById('board');
     board.innerHTML = '';
@@ -524,9 +649,8 @@ const Renderer = {
 
         const owner = BM.owner(r, c);
         if (owner) {
-          const p    = G.players.find(x => x.id === owner);
           const chip = document.createElement('div');
-          chip.className = 'chip ' + (p ? p.chipClass : 'p1');
+          chip.className = 'chip ' + teamChipCls(owner);
           cell.appendChild(chip);
         }
         if (BM.isSeqCell(r, c)) cell.classList.add('seq-cell');
@@ -536,85 +660,84 @@ const Renderer = {
     }
   },
 
-  buildPanels() {
-    const left  = document.getElementById('left-panel');
-    const right = document.getElementById('right-panel');
-    left.innerHTML = ''; right.innerHTML = '';
-    G.players.forEach((p, i) => {
-      const block  = document.createElement('div');
-      block.className = 'player-block';
-      block.id     = 'block-' + p.id;
-
-      const tag    = document.createElement('div');
-      tag.className = 'player-name-tag';
-      tag.style.borderColor = p.color;
-      tag.style.color       = p.color;
-
-      const av = document.createElement('span');
-      av.className = 'panel-avatar';
-      av.textContent = p.avatar || '🃏';
-
-      const nm = document.createElement('span');
-      nm.textContent = p.name + (p.id === myId ? ' (you)' : '');
-
-      tag.appendChild(av); tag.appendChild(nm);
-
-      const col    = document.createElement('div');
-      col.className = 'player-hand-col'; col.id = 'hand-col-' + p.id;
-      block.appendChild(tag); block.appendChild(col);
-      (i < Math.ceil(G.players.length / 2) ? left : right).appendChild(block);
-    });
-  },
-
   renderHands() {
     const cur = G.cur;
-    G.players.forEach(p => {
-      const block = document.getElementById('block-' + p.id);
-      if (block) block.classList.toggle('active-pb', p.id === cur.id);
-      const col   = document.getElementById('hand-col-' + p.id);
-      if (col) this._fillHandEl(col, p);
+
+    // Active seat glow
+    document.querySelectorAll('.player-seat').forEach(s => {
+      s.classList.toggle('active-seat', s.id === 'seat-' + cur.id);
     });
 
+    // Fill each seat hand
+    G.players.forEach(p => {
+      const handEl = document.getElementById('seat-hand-' + p.id);
+      if (handEl) this._fillSeatHand(handEl, p);
+    });
+
+    // Mobile bottom-bar hand (local player only)
     const me = G.players.find(p => p.id === myId);
     if (me) {
-      const label = document.getElementById('active-hand-label');
-      const hand  = document.getElementById('active-hand');
-      label.textContent = me.name + "'s Hand";
-      label.style.color = me.color;
-      this._fillHandEl(hand, me);
+      const mobileHand  = document.getElementById('active-hand');
+      const handLabel   = document.getElementById('active-hand-label');
+      if (mobileHand)  this._fillHandEl(mobileHand, me);
+      if (handLabel) {
+        handLabel.textContent = me.name + "'s Hand";
+        handLabel.style.color = me.color;
+      }
     }
 
+    // Turn banner
     const banner = document.getElementById('turn-banner');
     banner.classList.remove('banner-pop');
     void banner.offsetWidth;
-    banner.className    = 'banner-pop';
-    banner.textContent  = cur.id === myId ? 'Your Turn!' : cur.name + "'s Turn";
+    banner.classList.add('banner-pop');
+    banner.textContent       = cur.id === myId ? 'Your Turn!' : cur.name + "'s Turn";
     banner.style.borderColor = cur.color;
     banner.style.color       = cur.color;
-    document.getElementById('deck-count').textContent = G.deck.length;
 
-    // Show/hide deck pile cards based on deck size
-    const piles = document.querySelectorAll('.deck-card-b');
-    piles.forEach((p, i) => {
+    document.getElementById('deck-count').textContent = G.deck.length;
+    document.querySelectorAll('.deck-card-b').forEach((p, i) => {
       p.style.opacity = G.deck.length > i * 30 ? '1' : '0.15';
+    });
+  },
+
+  _fillSeatHand(el, player) {
+    el.innerHTML = '';
+    const hand   = G.hands[player.id] || [];
+    const isMe   = player.id === myId;
+    const isCur  = player.id === G.cur.id;
+    const isVert = el.classList.contains('seat-hand-v');
+
+    if (!isMe) {
+      // Face-down fan
+      hand.forEach((_, i) => {
+        const back = document.createElement('div');
+        back.className = 'card card-back card-mini';
+        back.style.setProperty('--fi', i);
+        el.appendChild(back);
+      });
+      return;
+    }
+
+    // My own cards in the seat (desktop-only; mobile uses bottom bar)
+    hand.forEach((code, i) => {
+      const cardEl = document.createElement('div');
+      cardEl.className = 'card card-mini' + (isRed(code) ? ' red-card' : '');
+      cardEl.innerHTML = buildCardFaceHTML(code);
+      if (!isCur) {
+        cardEl.classList.add('disabled');
+      } else {
+        if (G.selectedCard === code && G.selIdx === i) cardEl.classList.add('selected');
+        cardEl.addEventListener('click', () => GF.handleCardSelect(code, i));
+      }
+      el.appendChild(cardEl);
     });
   },
 
   _fillHandEl(el, player) {
     el.innerHTML = '';
     const hand  = G.hands[player.id] || [];
-    const isMe  = player.id === myId;
     const isCur = player.id === G.cur.id;
-
-    if (!isMe) {
-      hand.forEach(() => {
-        const back = document.createElement('div');
-        back.className = 'card card-back';
-        el.appendChild(back);
-      });
-      return;
-    }
-
     hand.forEach((code, i) => {
       const cardEl = document.createElement('div');
       cardEl.className = 'card' + (isRed(code) ? ' red-card' : '');
@@ -632,44 +755,43 @@ const Renderer = {
   buildScoreStrip() {
     const strip = document.getElementById('score-strip');
     strip.innerHTML = '';
-    G.players.forEach(p => {
-      const block  = document.createElement('div');
-      block.className = 'score-block'; block.id = 'score-block-' + p.id;
-      const av     = document.createElement('span');
-      av.className = 'score-avatar'; av.textContent = p.avatar || '🃏';
-      const name   = document.createElement('span');
-      name.style.color = p.color; name.style.fontSize = '.75rem';
-      name.textContent = p.name;
-      const pips   = document.createElement('div');
-      pips.className = 'score-pips'; pips.id = 'pips-' + p.id;
-      for (let i = 0; i < WIN_SEQS; i++) {
-        const pip = document.createElement('span');
-        pip.className = 'pip'; pip.style.color = p.color;
-        pips.appendChild(pip);
-      }
-      block.appendChild(av); block.appendChild(name); block.appendChild(pips);
+    for (let t = 0; t < G.teamCount; t++) {
+      const color   = TEAM_COLORS[t];
+      const members = G.players.filter(p => p.teamIdx === t);
+      const block   = document.createElement('div');
+      block.className = 'score-block';
+      block.id = `score-block-team-${t}`;
+      block.innerHTML =
+        `<span class="score-dot" style="background:${color}"></span>` +
+        `<span class="score-label" style="color:${color}">Team ${TEAM_LABELS[t]}</span>` +
+        `<span class="score-avs">${members.map(p => p.avatar).join('')}</span>` +
+        `<div class="score-pips" id="pips-team-${t}">` +
+          Array.from({ length: WIN_SEQS }, () =>
+            `<span class="pip" style="color:${color}"></span>`).join('') +
+        `</div>`;
       strip.appendChild(block);
-    });
+    }
   },
 
   updateScore() {
-    G.players.forEach(p => {
-      const pips = document.querySelectorAll(`#pips-${p.id} .pip`);
-      pips.forEach((pip, i) => {
-        const fill = i < (G.scores[p.id] || 0);
+    for (let t = 0; t < G.teamCount; t++) {
+      const color = TEAM_COLORS[t];
+      document.querySelectorAll(`#pips-team-${t} .pip`).forEach((pip, i) => {
+        const fill = i < (G.scores[t] || 0);
         if (fill && !pip.classList.contains('filled')) {
-          pip.classList.add('filled', 'filling');
-          pip.style.background = p.color;
+          pip.classList.add('filled','filling');
+          pip.style.background = color;
           setTimeout(() => pip.classList.remove('filling'), 450);
         } else if (!fill) {
-          pip.classList.remove('filled'); pip.style.background = '';
+          pip.classList.remove('filled');
+          pip.style.background = '';
         }
       });
-    });
+    }
   },
 
   clearHighlights() {
-    document.querySelectorAll('.cell').forEach(c => c.classList.remove('valid', 'valid-remove'));
+    document.querySelectorAll('.cell').forEach(c => c.classList.remove('valid','valid-remove'));
   },
 
   highlightValidCells() {
@@ -757,20 +879,16 @@ const Renderer = {
 
 const GF = {
   handleCardSelect(card, idx) {
-    if (G.animating)       return;
-    if (G.cur.id !== myId) return;
+    if (G.animating || G.cur.id !== myId) return;
     G.selectedCard = (G.selectedCard === card && G.selIdx === idx) ? null : card;
-    G.selIdx       = (G.selectedCard === null) ? null : idx;
+    G.selIdx       = G.selectedCard === null ? null : idx;
     Renderer.highlightValidCells();
     Renderer.renderHands();
   },
 
   handleCellClick(r, c) {
-    if (G.animating || !G.selectedCard) return;
-    if (G.cur.id !== myId) return;
-
+    if (G.animating || !G.selectedCard || G.cur.id !== myId) return;
     const card = G.selectedCard;
-
     if (isOneEyedJack(card)) {
       if (!RE.canRemove(r, c)) return;
       this._commit(r, c, false);
@@ -788,10 +906,11 @@ const GF = {
     G.animating = true;
     document.body.classList.add('locked');
 
-    const player  = G.cur;
-    const cardIdx = G.selIdx;
-
+    const player     = G.cur;
+    const cardIdx    = G.selIdx;
+    const myTeam     = G.teamAssignments[player.id] ?? 0;
     const hadDeckCard = G.deck.length > 0;
+
     const newHand = G.hands[player.id].slice();
     newHand.splice(cardIdx, 1);
     const newDeck = G.deck.slice();
@@ -806,16 +925,15 @@ const GF = {
 
     Renderer.renderBoard();
     Renderer.clearHighlights();
-    if (placed) Renderer.animateChip(r, c);
+    if (placed)      Renderer.animateChip(r, c);
     if (hadDeckCard) animateCardDraw(player.id);
 
     const newSeqs = placed ? RE.findNewSequences(r, c, player.id) : [];
     if (newSeqs.length) {
       newSeqs.forEach(line => {
-        const key = RE.lineKey(line);
-        G.seqLines.push({ key, pid: player.id });
+        G.seqLines.push({ key: RE.lineKey(line), pid: player.id });
         line.forEach(([lr, lc]) => G.seqCells.add(`${lr},${lc}`));
-        G.scores[player.id] = (G.scores[player.id] || 0) + 1;
+        G.scores[myTeam] = (G.scores[myTeam] || 0) + 1;
       });
       Renderer.updateScore();
       await delay(260);
@@ -824,8 +942,9 @@ const GF = {
       await delay(600);
     }
 
-    const isWinner = (G.scores[player.id] || 0) >= WIN_SEQS;
-    const nextIdx  = isWinner ? G.currentIdx : (G.currentIdx + 1) % G.players.length;
+    const teamScore = G.scores[myTeam] || 0;
+    const isWinner  = teamScore >= WIN_SEQS;
+    const nextIdx   = isWinner ? G.currentIdx : (G.currentIdx + 1) % G.players.length;
 
     const update = {};
     update[`hands/${player.id}`]        = pack(newHand);
@@ -833,17 +952,17 @@ const GF = {
     update[`boardState/${BM.key(r,c)}`] = placed ? player.id : null;
     update['seqCells']                  = pack([...G.seqCells]);
     update['seqLines']                  = JSON.stringify(G.seqLines);
-    update[`scores/${player.id}`]       = G.scores[player.id] || 0;
+    update[`teamScores/${myTeam}`]      = teamScore;
     update['currentPlayerIndex']        = nextIdx;
     update['status']                    = isWinner ? 'finished' : 'playing';
-    if (isWinner) update['winner']      = player.id;
+    if (isWinner) update['winner']      = myTeam;
 
     G.animating = false;
     document.body.classList.remove('locked');
 
     await roomRef.update(update);
 
-    if (isWinner) showWin(player);
+    if (isWinner) showWin(myTeam);
     else Renderer.renderHands();
   },
 };
@@ -855,25 +974,20 @@ const GF = {
 function animateCardDraw(playerId) {
   const deckEl = document.getElementById('deck-pile');
   if (!deckEl) return;
-
-  // Pick destination: bottom bar for self, side panel col for others
   const isMe  = playerId === myId;
-  let handEl  = document.getElementById('hand-col-' + playerId);
+  let handEl  = document.getElementById('seat-hand-' + playerId);
   if (isMe) {
     const bar = document.getElementById('active-hand');
     if (bar && bar.offsetParent !== null) handEl = bar;
   }
   if (!handEl || handEl.offsetParent === null) return;
 
-  const fromR = deckEl.getBoundingClientRect();
-  const toR   = handEl.getBoundingClientRect();
-
-  // Start position: center of deck pile
+  const fromR  = deckEl.getBoundingClientRect();
+  const toR    = handEl.getBoundingClientRect();
   const startX = fromR.left + fromR.width  / 2 - 22;
   const startY = fromR.top  + fromR.height / 2 - 30;
-  // End position: right side of the hand
-  const endX   = toR.right - 48;
-  const endY   = toR.top   + toR.height / 2 - 30;
+  const endX   = toR.right  - 48;
+  const endY   = toR.top    + toR.height / 2 - 30;
 
   const fly = document.createElement('div');
   fly.className = 'flying-card-anim';
@@ -881,18 +995,16 @@ function animateCardDraw(playerId) {
   fly.style.top  = startY + 'px';
   document.body.appendChild(fly);
 
-  // Two rAF to ensure the initial position is painted before transition
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    fly.style.transform  = `translate(${endX - startX}px, ${endY - startY}px) rotate(8deg) scale(0.82)`;
+    fly.style.transform  = `translate(${endX - startX}px,${endY - startY}px) rotate(8deg) scale(.82)`;
     fly.style.opacity    = '0';
     fly.style.transition = 'transform .42s cubic-bezier(.22,.68,0,1.28), opacity .16s ease .3s';
   }));
-
   setTimeout(() => fly.remove(), 600);
 }
 
 function showView(id) {
-  ['landing-screen', 'lobby-screen', 'game-screen'].forEach(v => {
+  ['landing-screen','lobby-screen','game-screen'].forEach(v => {
     const el = document.getElementById(v);
     if (el) el.classList.toggle('hidden', v !== id);
   });
@@ -905,9 +1017,10 @@ function showError(msg) {
   setTimeout(() => { el.textContent = ''; }, 3500);
 }
 
-function showWin(player) {
-  const isMe = player.id === myId;
-  document.getElementById('win-text').textContent = isMe ? 'You Win! 🎉' : player.name + ' Wins! 🎉';
+function showWin(winTeamIdx) {
+  const isMyTeam = (G.teamAssignments[myId] ?? 0) === winTeamIdx;
+  document.getElementById('win-text').textContent =
+    isMyTeam ? 'Your Team Wins! 🎉' : `Team ${TEAM_LABELS[winTeamIdx]} Wins!`;
   document.getElementById('win-sub').textContent  = WIN_SEQS + ' sequences — well played!';
   document.getElementById('win-overlay').classList.remove('hidden');
 }
@@ -917,31 +1030,22 @@ function showWin(player) {
    ══════════════════════════════════════════════════════════════════════════ */
 
 document.getElementById('create-btn').addEventListener('click', createRoom);
-
 document.getElementById('join-btn').addEventListener('click', () => {
   joinRoom(document.getElementById('code-input').value);
 });
-
-document.getElementById('invite-join-btn').addEventListener('click', () => {
-  joinRoom(urlCode);
-});
-
+document.getElementById('invite-join-btn').addEventListener('click', () => joinRoom(urlCode));
 document.getElementById('code-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') joinRoom(document.getElementById('code-input').value);
 });
-
 document.getElementById('name-input').addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
-  if (urlCode) {
-    joinRoom(urlCode);
-  } else {
+  if (urlCode) joinRoom(urlCode);
+  else {
     const code = document.getElementById('code-input').value.trim();
     if (code) joinRoom(code); else createRoom();
   }
 });
-
 document.getElementById('start-game-btn').addEventListener('click', startGame);
-
 document.getElementById('copy-link-btn').addEventListener('click', () => {
   const url = location.href.split('#')[0] + '#' + myCode;
   navigator.clipboard.writeText(url).then(() => {
@@ -951,23 +1055,22 @@ document.getElementById('copy-link-btn').addEventListener('click', () => {
     setTimeout(() => { btn.textContent = orig; }, 2000);
   });
 });
-
 document.getElementById('leave-lobby-btn').addEventListener('click', () => {
   if (roomOff) roomOff();
   location.hash = '';
   location.reload();
 });
-
 document.getElementById('play-again-btn').addEventListener('click', () => {
   if (roomOff) roomOff();
   location.hash = '';
   location.reload();
 });
 
-/* ══════════════════════════════════════════════════════════════════════════
-   INIT
-   ══════════════════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.team-count-opt').forEach(btn => {
+  btn.addEventListener('click', () => setTeamCount(parseInt(btn.dataset.count)));
+});
 
+/* ── Init ─────────────────────────────────────────────────────────────────── */
 buildAvatarPicker();
 setupLanding();
 showView('landing-screen');
