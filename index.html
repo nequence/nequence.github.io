@@ -13,17 +13,13 @@
   <div id="landing-box">
     <div class="game-logo">♠ SEQUENCE ♠</div>
     <div class="game-subtitle">Online Multiplayer</div>
-
     <div id="invite-header" class="hidden">
       <div class="invite-tag">You're invited to room</div>
       <div id="invite-code-badge" class="invite-code-badge"></div>
     </div>
-
     <input type="text" id="name-input" class="txt-input" placeholder="Your name…" maxlength="20" autocomplete="off"/>
-
     <div class="avatar-row-label">Pick your avatar</div>
     <div id="avatar-picker" class="avatar-picker"></div>
-
     <div id="normal-landing">
       <button id="create-btn" class="pcount-btn">Create Room</button>
       <div class="landing-divider">— or join a room —</div>
@@ -32,9 +28,7 @@
         <button id="join-btn" class="pcount-btn">Join</button>
       </div>
     </div>
-
     <button id="invite-join-btn" class="pcount-btn hidden">Join Room →</button>
-
     <div id="landing-error" class="error-msg"></div>
     <div id="setup-rules">
       <span>First to <strong>2 sequences</strong> wins</span>
@@ -55,15 +49,9 @@
       <span id="room-code-display" class="room-code-val">------</span>
       <button id="copy-link-btn" class="btn-sm">⎘ Copy Link</button>
     </div>
-
-    <!-- Circle seating table -->
     <div id="lobby-table-wrap">
-      <div id="lobby-table">
-        <div id="lobby-table-label">SEQUENCE</div>
-      </div>
+      <div id="lobby-table"><div id="lobby-table-label">SEQUENCE</div></div>
     </div>
-
-    <!-- Team management (host only) -->
     <div id="team-setup" class="hidden">
       <div class="team-setup-header">
         <span class="section-label">Teams</span>
@@ -75,13 +63,10 @@
       </div>
       <div id="team-columns" class="team-columns"></div>
     </div>
-
-    <!-- Team join (non-host) -->
     <div id="team-view" class="hidden">
       <div class="section-label">Pick Your Team</div>
       <div id="team-join-btns" class="team-join-btns"></div>
     </div>
-
     <div id="lobby-waiting-msg" class="lobby-wait">Waiting for the host to start…</div>
     <button id="start-game-btn" class="pcount-btn hidden">▶ Start Game</button>
     <button id="leave-lobby-btn" class="btn-danger-sm">Leave Room</button>
@@ -91,7 +76,7 @@
 <!-- ═══════════════════ GAME ════════════════════ -->
 <div id="game-screen" class="hidden">
 
-  <!-- Top header bar -->
+  <!-- Header bar -->
   <div id="game-header">
     <div id="room-badge-header" class="room-badge">ROOM: ------</div>
     <div id="turn-banner">Your Turn</div>
@@ -108,41 +93,56 @@
   <!-- Score strip -->
   <div id="score-strip"></div>
 
-  <!-- Poker table: seats + board -->
-  <div id="table-wrap">
-    <div id="seats-top" class="seat-zone"></div>
-    <div id="table-middle">
-      <div id="seats-left" class="seat-zone seat-zone-v"></div>
+  <!-- Game layout -->
+  <div id="game-layout">
 
-      <!-- Board with side SEQUENCE labels -->
-      <div id="board-outer">
-        <div class="board-side left-side">
-          <span class="side-seq">SEQUENCE</span>
-          <span class="side-rule-txt">TWO EYED JACKS ARE WILD</span>
-        </div>
-        <div id="board-scroll-wrap">
-          <div id="board-wrap">
-            <div id="board-container">
-              <div id="board"></div>
-              <svg id="seq-lines" xmlns="http://www.w3.org/2000/svg" overflow="visible"></svg>
+    <!-- Top player info (outside oval) -->
+    <div id="top-info-zone" class="info-zone info-h"></div>
+
+    <div id="mid-row">
+      <!-- Left player info (outside oval) -->
+      <div id="left-info-zone" class="info-zone info-v"></div>
+
+      <!-- ══ POKER TABLE (oval) ══ -->
+      <div id="poker-table">
+
+        <!-- Top edge: face-down cards for top players -->
+        <div id="table-top-edge" class="table-edge edge-h"></div>
+
+        <div id="table-row">
+          <!-- Left edge: face-down cards for left players -->
+          <div id="table-left-edge" class="table-edge edge-v"></div>
+
+          <!-- Board -->
+          <div id="board-area">
+            <div id="board-wrap">
+              <div id="board-container">
+                <div id="board"></div>
+                <svg id="seq-lines" xmlns="http://www.w3.org/2000/svg" overflow="visible"></svg>
+              </div>
             </div>
           </div>
+
+          <!-- Right edge: face-down cards for right players -->
+          <div id="table-right-edge" class="table-edge edge-v"></div>
         </div>
-        <div class="board-side right-side">
-          <span class="side-seq">SEQUENCE</span>
-          <span class="side-rule-txt">ONE EYED JACKS REMOVE</span>
-        </div>
+
+        <!-- Bottom edge: my face-down representation -->
+        <div id="table-bottom-edge" class="table-edge edge-h"></div>
+
       </div>
+      <!-- ══ end poker table ══ -->
 
-      <div id="seats-right" class="seat-zone seat-zone-v"></div>
+      <!-- Right player info (outside oval) -->
+      <div id="right-info-zone" class="info-zone info-v"></div>
     </div>
-    <div id="seats-bottom" class="seat-zone"></div>
-  </div>
 
-  <!-- Mobile hand (bottom bar) -->
-  <div id="bottom-bar">
-    <div id="active-hand-label"></div>
-    <div id="active-hand" class="hand-row"></div>
+    <!-- Bottom: my info + my interactive hand -->
+    <div id="bottom-player">
+      <div id="my-info-bar"></div>
+      <div id="active-hand" class="hand-row"></div>
+    </div>
+
   </div>
 
   <div id="jack-legend">
@@ -159,6 +159,15 @@
     <div id="win-text"></div>
     <div id="win-sub"></div>
     <button id="play-again-btn">New Game</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ ROTATE OVERLAY (phones portrait) ══════════════════ -->
+<div id="rotate-overlay">
+  <div id="rotate-content">
+    <div id="rotate-icon">📱</div>
+    <div id="rotate-msg">Rotate your phone</div>
+    <div id="rotate-sub">Sequence plays best in landscape mode</div>
   </div>
 </div>
 

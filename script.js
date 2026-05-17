@@ -331,9 +331,9 @@ function applyRoomState(room) {
   if (badge) badge.textContent = 'ROOM: ' + myCode;
 
   const needBuild = !G.seatsBuilt ||
-    document.querySelectorAll('.player-seat').length !== G.players.length;
+    document.querySelectorAll('.pil').length !== G.players.length - 1;
   if (needBuild) {
-    Renderer.buildSeats();
+    Renderer.buildTableLayout();
     Renderer.buildScoreStrip();
     G.seatsBuilt = true;
   }
@@ -567,61 +567,73 @@ const RE = {
    ══════════════════════════════════════════════════════════════════════════ */
 
 const Renderer = {
-  _seatPositions(n) {
-    return ({
-      2: ['bottom','top'],
-      3: ['bottom','top-left','top-right'],
-      4: ['bottom','left','top','right'],
-      5: ['bottom','left','top-left','top-right','right'],
-      6: ['bottom','left','top-left','top','top-right','right'],
-      7: ['bottom','left','top-left','top','top-right','right','bottom-right'],
-      8: ['bottom','bottom-left','left','top-left','top','top-right','right','bottom-right'],
-    })[n] || ['bottom','top'];
-  },
-
-  _seatZone(pos) {
-    if (pos.includes('top'))    return 'seats-top';
-    if (pos === 'left')         return 'seats-left';
-    if (pos === 'right')        return 'seats-right';
-    return 'seats-bottom';
-  },
-
-  buildSeats() {
-    ['seats-top','seats-left','seats-right','seats-bottom'].forEach(id =>
-      { document.getElementById(id).innerHTML = ''; }
-    );
-
-    const n       = G.players.length;
-    const myIdx   = G.players.findIndex(p => p.id === myId);
-    const pivot   = myIdx < 0 ? 0 : myIdx;
-    const ordered = [...G.players.slice(pivot), ...G.players.slice(0, pivot)];
-    const positions = this._seatPositions(n);
-
-    ordered.forEach((p, i) => {
-      const pos    = positions[i] || 'top';
-      const zone   = this._seatZone(pos);
-      const isMe   = p.id === myId;
-      const color  = p.color;
-      const isVert = pos === 'left' || pos === 'right';
-
-      const seat = document.createElement('div');
-      seat.className = `player-seat pos-${pos}${isMe ? ' seat-me' : ''}`;
-      seat.id = 'seat-' + p.id;
-      seat.setAttribute('data-pos', pos);
-      seat.setAttribute('data-vert', isVert ? '1' : '0');
-
-      seat.innerHTML =
-        `<div class="seat-header">` +
-          `<div class="seat-avatar" style="border-color:${color};box-shadow:0 0 0 2px ${color}22">${p.avatar || '🃏'}</div>` +
-          `<div class="seat-meta">` +
-            `<div class="seat-name">${p.name}${isMe ? ' ✦' : ''}</div>` +
-            `<div class="seat-team" style="color:${color}">Team ${TEAM_LABELS[p.teamIdx ?? 0]}</div>` +
-          `</div>` +
-        `</div>` +
-        `<div class="seat-hand${isVert ? ' seat-hand-v' : ''}" id="seat-hand-${p.id}"></div>`;
-
-      document.getElementById(zone).appendChild(seat);
+  buildTableLayout() {
+    ['top-info-zone','left-info-zone','right-info-zone',
+     'table-top-edge','table-left-edge','table-right-edge',
+     'table-bottom-edge','my-info-bar'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '';
     });
+
+    const myIdx     = G.players.findIndex(p => p.id === myId);
+    const pivot     = myIdx < 0 ? 0 : myIdx;
+    const ordered   = [...G.players.slice(pivot), ...G.players.slice(0, pivot)];
+    const me        = ordered[0];
+    const opponents = ordered.slice(1);
+
+    const zones = this._assignOpponentZones(opponents.length);
+    zones.forEach((zone, i) => {
+      const p          = opponents[i];
+      const infoZoneId = zone + '-info-zone';
+      const edgeId     = 'table-' + zone + '-edge';
+      const isVert     = zone === 'left' || zone === 'right';
+      const infoZoneEl = document.getElementById(infoZoneId);
+      const edgeEl     = document.getElementById(edgeId);
+      if (infoZoneEl) infoZoneEl.appendChild(this._makePil(p));
+      if (edgeEl)     edgeEl.appendChild(this._makeEdgeSlot(p, isVert));
+    });
+
+    const myBar = document.getElementById('my-info-bar');
+    if (myBar && me) {
+      myBar.innerHTML =
+        `<div class="my-bar-avatar">${me.avatar || '🃏'}</div>` +
+        `<div>` +
+          `<div class="my-bar-name" style="color:${me.color}">${me.name} ✦</div>` +
+          `<div class="my-bar-team" style="color:${me.color}">Team ${TEAM_LABELS[me.teamIdx ?? 0]}</div>` +
+        `</div>`;
+    }
+  },
+
+  _assignOpponentZones(n) {
+    const map = {
+      0: [],
+      1: ['top'],
+      2: ['left','right'],
+      3: ['left','top','right'],
+      4: ['left','top','top','right'],
+      5: ['left','top','top','right','right'],
+      6: ['left','left','top','top','right','right'],
+      7: ['left','left','top','top','top','right','right'],
+    };
+    return map[Math.min(n, 7)] || map[7];
+  },
+
+  _makePil(player) {
+    const el = document.createElement('div');
+    el.className = 'pil';
+    el.id = 'pil-' + player.id;
+    el.innerHTML =
+      `<div class="pil-avatar">${player.avatar || '🃏'}</div>` +
+      `<div class="pil-name">${player.name}</div>` +
+      `<div class="pil-team" style="color:${player.color}">Team ${TEAM_LABELS[player.teamIdx ?? 0]}</div>`;
+    return el;
+  },
+
+  _makeEdgeSlot(player, isVert) {
+    const slot = document.createElement('div');
+    slot.className = 'edge-slot';
+    slot.id = 'edge-slot-' + player.id;
+    return slot;
   },
 
   renderBoard() {
@@ -663,28 +675,23 @@ const Renderer = {
   renderHands() {
     const cur = G.cur;
 
-    // Active seat glow
-    document.querySelectorAll('.player-seat').forEach(s => {
-      s.classList.toggle('active-seat', s.id === 'seat-' + cur.id);
+    // Active player glow on PILs and my-info-bar
+    document.querySelectorAll('.pil').forEach(el => {
+      el.classList.toggle('active-pil', el.id === 'pil-' + cur.id);
     });
+    const myBar = document.getElementById('my-info-bar');
+    if (myBar) myBar.classList.toggle('active-pil', cur.id === myId);
 
-    // Fill each seat hand
+    // Fill edge slots for opponents
     G.players.forEach(p => {
-      const handEl = document.getElementById('seat-hand-' + p.id);
-      if (handEl) this._fillSeatHand(handEl, p);
+      if (p.id === myId) return;
+      const slot = document.getElementById('edge-slot-' + p.id);
+      if (slot) this._fillEdgeSlot(slot, p);
     });
 
-    // Mobile bottom-bar hand (local player only)
+    // My interactive hand
     const me = G.players.find(p => p.id === myId);
-    if (me) {
-      const mobileHand  = document.getElementById('active-hand');
-      const handLabel   = document.getElementById('active-hand-label');
-      if (mobileHand)  this._fillHandEl(mobileHand, me);
-      if (handLabel) {
-        handLabel.textContent = me.name + "'s Hand";
-        handLabel.style.color = me.color;
-      }
-    }
+    if (me) this._fillHandEl(document.getElementById('active-hand'), me);
 
     // Turn banner
     const banner = document.getElementById('turn-banner');
@@ -701,37 +708,24 @@ const Renderer = {
     });
   },
 
-  _fillSeatHand(el, player) {
-    el.innerHTML = '';
-    const hand   = G.hands[player.id] || [];
-    const isMe   = player.id === myId;
-    const isCur  = player.id === G.cur.id;
-    const isVert = el.classList.contains('seat-hand-v');
-
-    if (!isMe) {
-      // Face-down fan
-      hand.forEach((_, i) => {
-        const back = document.createElement('div');
-        back.className = 'card card-back card-mini';
-        back.style.setProperty('--fi', i);
-        el.appendChild(back);
-      });
-      return;
+  _fillEdgeSlot(slot, player) {
+    slot.innerHTML = '';
+    const hand  = G.hands[player.id] || [];
+    const team  = player.teamIdx ?? 0;
+    const count = hand.length;
+    const show  = Math.min(count, 7);
+    for (let i = 0; i < show; i++) {
+      const card = document.createElement('div');
+      card.className = 'edge-card';
+      card.setAttribute('data-team', team);
+      slot.appendChild(card);
     }
-
-    // My own cards in the seat (desktop-only; mobile uses bottom bar)
-    hand.forEach((code, i) => {
-      const cardEl = document.createElement('div');
-      cardEl.className = 'card card-mini' + (isRed(code) ? ' red-card' : '');
-      cardEl.innerHTML = buildCardFaceHTML(code);
-      if (!isCur) {
-        cardEl.classList.add('disabled');
-      } else {
-        if (G.selectedCard === code && G.selIdx === i) cardEl.classList.add('selected');
-        cardEl.addEventListener('click', () => GF.handleCardSelect(code, i));
-      }
-      el.appendChild(cardEl);
-    });
+    if (count > 0) {
+      const badge = document.createElement('div');
+      badge.className = 'edge-count';
+      badge.textContent = count;
+      slot.appendChild(badge);
+    }
   },
 
   _fillHandEl(el, player) {
@@ -975,11 +969,9 @@ function animateCardDraw(playerId) {
   const deckEl = document.getElementById('deck-pile');
   if (!deckEl) return;
   const isMe  = playerId === myId;
-  let handEl  = document.getElementById('seat-hand-' + playerId);
-  if (isMe) {
-    const bar = document.getElementById('active-hand');
-    if (bar && bar.offsetParent !== null) handEl = bar;
-  }
+  let handEl  = isMe
+    ? document.getElementById('active-hand')
+    : document.getElementById('edge-slot-' + playerId);
   if (!handEl || handEl.offsetParent === null) return;
 
   const fromR  = deckEl.getBoundingClientRect();
