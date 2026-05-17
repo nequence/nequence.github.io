@@ -13,13 +13,32 @@
   <div id="landing-box">
     <div class="game-logo">♠ SEQUENCE ♠</div>
     <div class="game-subtitle">Online Multiplayer</div>
-    <input type="text" id="name-input" class="txt-input" placeholder="Your name…" maxlength="20" autocomplete="off"/>
-    <button id="create-btn" class="pcount-btn">Create Room</button>
-    <div class="landing-divider">— or join a room —</div>
-    <div class="join-row">
-      <input type="text" id="code-input" class="txt-input code-inp" placeholder="ROOM CODE" maxlength="6" autocomplete="off"/>
-      <button id="join-btn" class="pcount-btn">Join</button>
+
+    <!-- Shown only when opened via invite link -->
+    <div id="invite-header" class="hidden">
+      <div class="invite-tag">You're invited to room</div>
+      <div id="invite-code-badge" class="invite-code-badge"></div>
     </div>
+
+    <input type="text" id="name-input" class="txt-input" placeholder="Your name…" maxlength="20" autocomplete="off"/>
+
+    <!-- Avatar picker -->
+    <div class="avatar-row-label">Pick your avatar</div>
+    <div id="avatar-picker" class="avatar-picker"></div>
+
+    <!-- Normal landing: create + join -->
+    <div id="normal-landing">
+      <button id="create-btn" class="pcount-btn">Create Room</button>
+      <div class="landing-divider">— or join a room —</div>
+      <div class="join-row">
+        <input type="text" id="code-input" class="txt-input code-inp" placeholder="ROOM CODE" maxlength="6" autocomplete="off"/>
+        <button id="join-btn" class="pcount-btn">Join</button>
+      </div>
+    </div>
+
+    <!-- Invite landing: just a join button -->
+    <button id="invite-join-btn" class="pcount-btn hidden">Join Room →</button>
+
     <div id="landing-error" class="error-msg"></div>
     <div id="setup-rules">
       <span>First to <strong>2 sequences</strong> wins</span>
@@ -40,8 +59,14 @@
       <span id="room-code-display" class="room-code-val">------</span>
       <button id="copy-link-btn" class="btn-sm">⎘ Copy Link</button>
     </div>
-    <div class="lobby-section-title">Players in Room</div>
-    <div id="lobby-player-list"></div>
+
+    <!-- Circle seating table -->
+    <div id="lobby-table-wrap">
+      <div id="lobby-table">
+        <div id="lobby-table-label">SEQUENCE</div>
+      </div>
+    </div>
+
     <div id="lobby-waiting-msg" class="lobby-wait">Waiting for the host to start…</div>
     <button id="start-game-btn" class="pcount-btn hidden">▶ Start Game</button>
     <button id="leave-lobby-btn" class="btn-danger-sm">Leave Room</button>
@@ -53,7 +78,14 @@
   <div id="hud">
     <div id="turn-banner">Player 1's Turn</div>
     <div id="score-strip" aria-label="Sequence scores"></div>
-    <div id="deck-info">🂠 <span id="deck-count">0</span> cards</div>
+    <div id="deck-info">
+      <div id="deck-pile">
+        <div class="deck-card-b"></div>
+        <div class="deck-card-b"></div>
+        <div class="deck-card-b"></div>
+      </div>
+      <span id="deck-count">104</span>&thinsp;cards
+    </div>
   </div>
   <div id="main-area">
     <div id="left-panel" class="side-panel"></div>

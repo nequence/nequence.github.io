@@ -8,25 +8,29 @@
 firebase.initializeApp({ databaseURL: 'https://nequence-default-rtdb.firebaseio.com' });
 const db = firebase.database();
 
-/* ── Session identity (persists across page refresh) ─────────────────────── */
+/* ── Session identity ────────────────────────────────────────────────────── */
 let myId = sessionStorage.getItem('seq_uid');
 if (!myId) { myId = crypto.randomUUID(); sessionStorage.setItem('seq_uid', myId); }
 let myName   = '';
+let myAvatar = '🦁';
 let myCode   = '';
 let roomRef  = null;
-let roomOff  = null;   // firebase off() fn
+let roomOff  = null;
 
-/* ── URL hash auto-join ──────────────────────────────────────────────────── */
+/* ── URL hash (invite link) ──────────────────────────────────────────────── */
 const urlCode = (location.hash.slice(1) || '').toUpperCase().trim();
 
-/* ── Constants ───────────────────────────────────────────────────────────── */
+/* ── Avatar options ──────────────────────────────────────────────────────── */
+const AVATARS = ['🦁','🐯','🐺','🦊','🐻','🐸','🐵','🦄','🐲','🦅','🤠','😎','🧙','👑','🥷','🎭'];
+
+/* ── Board layout (official Sequence — Jacks in center) ──────────────────── */
 const BOARD_LAYOUT = [
   [null, '2S','3S','4S','5S','6S','7S','8S','9S', null],
   ['6C', '5C','4C','3C','2C','AH','KH','QH','10H','10S'],
   ['7C', 'AS','2D','3D','4D','5D','6D','7D','8D', 'QS'],
   ['8C', 'KS','6C','5H','4H','3H','2H','AD','9D', 'KS'],
-  ['9C', 'QS','7C','6H','5H','4H','3H','KC','10D','AS'],
-  ['10C','10S','8C','7H','6H','5H','QH','AC','QD','2S'],
+  ['9C', 'QS','7C','6H','JH','JD','3H','KC','10D','AS'],
+  ['10C','10S','8C','7H','JC','JS','QH','AC','QD','2S'],
   ['QC', '9S','9C','8H','9H','10H','KH','KD','2D','3S'],
   ['KC', '8S','10C','QC','KC','AC','AD','QD','3D','4S'],
   ['AC', '7S','6S','5S','4S','3S','2S','2H','3H','5S'],
@@ -71,19 +75,18 @@ function genCode() {
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-/* ── Serialization (arrays ↔ comma-separated strings) ───────────────────── */
 const pack   = arr => (arr || []).join(',');
 const unpack = str => str ? str.split(',').filter(Boolean) : [];
 
 /* ── Local game state ────────────────────────────────────────────────────── */
 const G = {
-  players:      [],     // [{id, name, color, chipClass}] in turn order
+  players:      [],
   deck:         [],
-  hands:        {},     // { id: ['2H','KS',...] }
-  boardState:   {},     // { 'r_c': playerId }
+  hands:        {},
+  boardState:   {},
   seqCells:     new Set(),
-  seqLines:     [],     // [{key:'r,c|r,c|...', pid}]
-  scores:       {},     // { id: number }
+  seqLines:     [],
+  scores:       {},
   currentIdx:   0,
   winner:       null,
   selectedCard: null,
@@ -92,6 +95,40 @@ const G = {
   panelsBuilt:  false,
   get cur()     { return this.players[this.currentIdx]; },
 };
+
+/* ══════════════════════════════════════════════════════════════════════════
+   AVATAR PICKER INIT
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function buildAvatarPicker() {
+  const picker = document.getElementById('avatar-picker');
+  AVATARS.forEach((emoji, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'avatar-opt' + (i === 0 ? ' selected' : '');
+    btn.textContent = emoji;
+    btn.setAttribute('type', 'button');
+    btn.addEventListener('click', () => {
+      myAvatar = emoji;
+      document.querySelectorAll('.avatar-opt').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+    picker.appendChild(btn);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LANDING MODE SETUP
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function setupLanding() {
+  if (!urlCode) return;
+  // Invite mode: hide normal create/join, show invite UI
+  document.getElementById('normal-landing').classList.add('hidden');
+  document.getElementById('invite-header').classList.remove('hidden');
+  document.getElementById('invite-code-badge').textContent = urlCode;
+  document.getElementById('invite-join-btn').classList.remove('hidden');
+  document.getElementById('name-input').focus();
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    ROOM OPERATIONS
@@ -109,7 +146,7 @@ async function createRoom() {
     hostId:    myId,
     status:    'lobby',
     createdAt: Date.now(),
-    players:   { [myId]: { name: myName, joinOrder: 0 } },
+    players:   { [myId]: { name: myName, avatar: myAvatar, joinOrder: 0 } },
   });
 
   location.hash = code;
@@ -120,7 +157,10 @@ async function createRoom() {
 
 async function joinRoom(code) {
   myName = document.getElementById('name-input').value.trim();
-  if (!myName) return showError('Enter your name first');
+  if (!myName) {
+    document.getElementById('name-input').focus();
+    return showError('Enter your name first');
+  }
   code = code.toUpperCase().trim();
   if (code.length !== 6) return showError('Enter a valid 6-character room code');
 
@@ -135,7 +175,7 @@ async function joinRoom(code) {
   roomRef = db.ref('rooms/' + code);
 
   await roomRef.child('players').child(myId).set({
-    name: myName, joinOrder: count,
+    name: myName, avatar: myAvatar, joinOrder: count,
   });
 
   location.hash = code;
@@ -161,10 +201,14 @@ function subscribeRoom() {
 async function startGame() {
   const snap = await roomRef.get();
   const room = snap.val();
+
+  // Only host can start
+  if (room.hostId !== myId) return;
+  if ((room.players ? Object.keys(room.players).length : 0) < 2)
+    return showError('Need at least 2 players');
+
   const entries = Object.entries(room.players || {})
     .sort(([, a], [, b]) => a.joinOrder - b.joinOrder);
-
-  if (entries.length < 2) return showError('Need at least 2 players');
 
   const n    = entries.length;
   const hs   = handSize(n);
@@ -195,11 +239,13 @@ async function startGame() {
    ══════════════════════════════════════════════════════════════════════════ */
 
 function applyRoomState(room) {
-  if (G.animating) return;   // let current animation finish; Firebase will fire again on next move
+  if (G.animating) return;
 
   const turnOrder = unpack(room.turnOrder);
   G.players    = turnOrder.map((id, i) => ({
-    id, name: (room.players[id] || {}).name || id,
+    id,
+    name:      (room.players[id] || {}).name   || id,
+    avatar:    (room.players[id] || {}).avatar  || '🃏',
     color:     P_COLORS[i].color,
     chipClass: P_COLORS[i].chipClass,
   }));
@@ -213,10 +259,8 @@ function applyRoomState(room) {
   G.currentIdx = room.currentPlayerIndex || 0;
   G.winner     = room.winner || null;
 
-  // Switch to game view
   showView('game-screen');
 
-  // Build structural DOM once (or rebuild if panel count changed)
   const needBuild = !G.panelsBuilt || document.querySelectorAll('.player-block').length !== G.players.length;
   if (needBuild) {
     Renderer.buildPanels();
@@ -228,7 +272,6 @@ function applyRoomState(room) {
   Renderer.renderHands();
   Renderer.updateScore();
 
-  // Redraw sequence lines after layout settles
   requestAnimationFrame(() => {
     document.getElementById('seq-lines').innerHTML = '';
     G.seqLines.forEach(({ key, pid }) => {
@@ -245,11 +288,10 @@ function applyRoomState(room) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   LOBBY RENDERER
+   LOBBY RENDERER  (circle table)
    ══════════════════════════════════════════════════════════════════════════ */
 
 function renderLobby(room) {
-  // Don't go back to lobby once game has started
   if (!document.getElementById('game-screen').classList.contains('hidden')) return;
 
   showView('lobby-screen');
@@ -259,24 +301,44 @@ function renderLobby(room) {
   document.getElementById('start-game-btn').classList.toggle('hidden', !isHost);
   document.getElementById('lobby-waiting-msg').classList.toggle('hidden', isHost);
 
-  const list    = document.getElementById('lobby-player-list');
-  list.innerHTML = '';
+  const players = Object.entries(room.players || {})
+    .sort(([, a], [, b]) => a.joinOrder - b.joinOrder);
 
-  Object.entries(room.players || {})
-    .sort(([, a], [, b]) => a.joinOrder - b.joinOrder)
-    .forEach(([id, p], i) => {
-      const row    = document.createElement('div');
-      row.className = 'lobby-player-row';
-      const sw     = document.createElement('span');
-      sw.className  = 'lobby-swatch';
-      sw.style.background = P_COLORS[i].color;
-      const nm     = document.createElement('span');
-      nm.textContent = p.name
-        + (id === myId     ? ' (you)' : '')
-        + (id === room.hostId ? ' 👑'  : '');
-      row.appendChild(sw); row.appendChild(nm);
-      list.appendChild(row);
-    });
+  const table = document.getElementById('lobby-table');
+  // Remove old seats (keep the label)
+  table.querySelectorAll('.lobby-seat').forEach(s => s.remove());
+
+  const n  = players.length;
+  // Table is 280×180px; seats orbit inside the oval
+  const cx = 140, cy = 90, rx = 108, ry = 72;
+
+  players.forEach(([id, p], i) => {
+    const angle = (2 * Math.PI * i / n) - Math.PI / 2;
+    const x     = cx + rx * Math.cos(angle);
+    const y     = cy + ry * Math.sin(angle);
+    const color = P_COLORS[i].color;
+
+    const seat  = document.createElement('div');
+    seat.className = 'lobby-seat' + (id === myId ? ' lobby-seat-me' : '');
+    seat.style.left      = x + 'px';
+    seat.style.top       = y + 'px';
+    seat.style.borderColor = color;
+
+    const av  = document.createElement('div');
+    av.className = 'lobby-seat-avatar';
+    av.textContent = p.avatar || '🃏';
+
+    const nm  = document.createElement('div');
+    nm.className = 'lobby-seat-name';
+    nm.style.color = color;
+    nm.textContent = p.name
+      + (id === myId      ? ' (you)' : '')
+      + (id === room.hostId ? ' 👑'  : '');
+
+    seat.appendChild(av);
+    seat.appendChild(nm);
+    table.appendChild(seat);
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -359,10 +421,10 @@ const RE = {
   },
 
   canRemove(r, c) {
-    if (BM.isCorner(r, c))   return false;
+    if (BM.isCorner(r, c)) return false;
     const owner = BM.owner(r, c);
     if (!owner || owner === G.cur.id) return false;
-    if (BM.isSeqCell(r, c))  return false;
+    if (BM.isSeqCell(r, c)) return false;
     return true;
   },
 };
@@ -380,15 +442,23 @@ const Renderer = {
         const cell = document.createElement('div');
         cell.className = 'cell';
         const code = BOARD_LAYOUT[r][c];
+
         if (code === null) {
           cell.classList.add('corner');
           cell.innerHTML = '<span class="free-star">★</span><span class="free-label">FREE</span>';
         } else {
           const red = isRed(code);
+          const rc  = red ? ' red' : '';
+          const rk  = cardRank(code);
+          const sym = symOf(code);
+          const isJ = isJack(code);
+          if (isJ) cell.classList.add('jack-cell');
           cell.innerHTML =
-            `<span class="cell-rank${red ? ' red' : ''}">${cardRank(code)}</span>` +
-            `<span class="cell-suit${red ? ' red' : ''}">${symOf(code)}</span>`;
+            `<span class="cell-tl${rc}">${rk}<span class="cell-ts">${sym}</span></span>` +
+            `<span class="cell-mid${rc}">${sym}</span>` +
+            `<span class="cell-br${rc}">${rk}<span class="cell-ts">${sym}</span></span>`;
         }
+
         const owner = BM.owner(r, c);
         if (owner) {
           const p    = G.players.find(x => x.id === owner);
@@ -411,10 +481,21 @@ const Renderer = {
       const block  = document.createElement('div');
       block.className = 'player-block';
       block.id     = 'block-' + p.id;
+
       const tag    = document.createElement('div');
       tag.className = 'player-name-tag';
-      tag.style.borderColor = p.color; tag.style.color = p.color;
-      tag.textContent = p.name + (p.id === myId ? ' (you)' : '');
+      tag.style.borderColor = p.color;
+      tag.style.color       = p.color;
+
+      const av = document.createElement('span');
+      av.className = 'panel-avatar';
+      av.textContent = p.avatar || '🃏';
+
+      const nm = document.createElement('span');
+      nm.textContent = p.name + (p.id === myId ? ' (you)' : '');
+
+      tag.appendChild(av); tag.appendChild(nm);
+
       const col    = document.createElement('div');
       col.className = 'player-hand-col'; col.id = 'hand-col-' + p.id;
       block.appendChild(tag); block.appendChild(col);
@@ -431,7 +512,6 @@ const Renderer = {
       if (col) this._fillHandEl(col, p);
     });
 
-    // Mobile bottom bar — only my cards
     const me = G.players.find(p => p.id === myId);
     if (me) {
       const label = document.getElementById('active-hand-label');
@@ -449,6 +529,12 @@ const Renderer = {
     banner.style.borderColor = cur.color;
     banner.style.color       = cur.color;
     document.getElementById('deck-count').textContent = G.deck.length;
+
+    // Show/hide deck pile cards based on deck size
+    const piles = document.querySelectorAll('.deck-card-b');
+    piles.forEach((p, i) => {
+      p.style.opacity = G.deck.length > i * 30 ? '1' : '0.15';
+    });
   },
 
   _fillHandEl(el, player) {
@@ -458,7 +544,6 @@ const Renderer = {
     const isCur = player.id === G.cur.id;
 
     if (!isMe) {
-      // Show card backs for opponents
       hand.forEach(() => {
         const back = document.createElement('div');
         back.className = 'card card-back';
@@ -495,8 +580,8 @@ const Renderer = {
     G.players.forEach(p => {
       const block  = document.createElement('div');
       block.className = 'score-block'; block.id = 'score-block-' + p.id;
-      const swatch = document.createElement('span');
-      swatch.className = 'score-swatch'; swatch.style.background = p.color;
+      const av     = document.createElement('span');
+      av.className = 'score-avatar'; av.textContent = p.avatar || '🃏';
       const name   = document.createElement('span');
       name.style.color = p.color; name.style.fontSize = '.75rem';
       name.textContent = p.name;
@@ -507,7 +592,7 @@ const Renderer = {
         pip.className = 'pip'; pip.style.color = p.color;
         pips.appendChild(pip);
       }
-      block.appendChild(swatch); block.appendChild(name); block.appendChild(pips);
+      block.appendChild(av); block.appendChild(name); block.appendChild(pips);
       strip.appendChild(block);
     });
   },
@@ -548,7 +633,6 @@ const Renderer = {
         if (RE.canRemove(r, c)) cells[r * 10 + c].classList.add('valid-remove');
       return;
     }
-    // Exact card match (rank + suit)
     for (let r = 0; r < 10; r++) for (let c = 0; c < 10; c++) {
       const code = BOARD_LAYOUT[r][c];
       if (code && code === card && !BM.isOccupied(r, c))
@@ -564,7 +648,6 @@ const Renderer = {
     chip.addEventListener('animationend', () => chip.classList.remove('dropping'), { once: true });
   },
 
-  // Animated line draw (used when the local player forms a sequence)
   drawSequenceLine(line5, player) {
     const svg  = document.getElementById('seq-lines');
     const cont = document.getElementById('board-container');
@@ -589,7 +672,6 @@ const Renderer = {
     el.style.transition = 'stroke-dashoffset .55s ease';
   },
 
-  // Instant line draw (used when syncing state from Firebase, no animation)
   drawSequenceLineInstant(cells, player) {
     const svg  = document.getElementById('seq-lines');
     const cont = document.getElementById('board-container');
@@ -651,10 +733,9 @@ const GF = {
     G.animating = true;
     document.body.classList.add('locked');
 
-    const player   = G.cur;
-    const cardIdx  = G.selIdx;
+    const player  = G.cur;
+    const cardIdx = G.selIdx;
 
-    // ── Update local G optimistically ──
     const newHand = G.hands[player.id].slice();
     newHand.splice(cardIdx, 1);
     const newDeck = G.deck.slice();
@@ -671,7 +752,6 @@ const GF = {
     Renderer.clearHighlights();
     if (placed) Renderer.animateChip(r, c);
 
-    // ── Sequence detection ──
     const newSeqs = placed ? RE.findNewSequences(r, c, player.id) : [];
     if (newSeqs.length) {
       newSeqs.forEach(line => {
@@ -687,11 +767,9 @@ const GF = {
       await delay(600);
     }
 
-    // ── Check win ──
     const isWinner = (G.scores[player.id] || 0) >= WIN_SEQS;
     const nextIdx  = isWinner ? G.currentIdx : (G.currentIdx + 1) % G.players.length;
 
-    // ── Build Firebase update (only changed fields) ──
     const update = {};
     update[`hands/${player.id}`]        = pack(newHand);
     update['deck']                      = pack(newDeck);
@@ -703,13 +781,13 @@ const GF = {
     update['status']                    = isWinner ? 'finished' : 'playing';
     if (isWinner) update['winner']      = player.id;
 
-    G.animating = false;                 // unblock before Firebase write
+    G.animating = false;
     document.body.classList.remove('locked');
 
     await roomRef.update(update);
 
     if (isWinner) showWin(player);
-    else Renderer.renderHands();        // update turn banner locally
+    else Renderer.renderHands();
   },
 };
 
@@ -748,14 +826,22 @@ document.getElementById('join-btn').addEventListener('click', () => {
   joinRoom(document.getElementById('code-input').value);
 });
 
+document.getElementById('invite-join-btn').addEventListener('click', () => {
+  joinRoom(urlCode);
+});
+
 document.getElementById('code-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') joinRoom(document.getElementById('code-input').value);
 });
 
 document.getElementById('name-input').addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
-  const code = document.getElementById('code-input').value.trim();
-  if (code) joinRoom(code); else createRoom();
+  if (urlCode) {
+    joinRoom(urlCode);
+  } else {
+    const code = document.getElementById('code-input').value.trim();
+    if (code) joinRoom(code); else createRoom();
+  }
 });
 
 document.getElementById('start-game-btn').addEventListener('click', startGame);
@@ -786,7 +872,6 @@ document.getElementById('play-again-btn').addEventListener('click', () => {
    INIT
    ══════════════════════════════════════════════════════════════════════════ */
 
-// Pre-fill room code if opened via share link
-if (urlCode) document.getElementById('code-input').value = urlCode;
-
+buildAvatarPicker();
+setupLanding();
 showView('landing-screen');
