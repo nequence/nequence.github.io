@@ -108,17 +108,32 @@
   <!-- Score strip -->
   <div id="score-strip"></div>
 
-  <!-- Table: seats + board -->
+  <!-- Poker table: seats + board -->
   <div id="table-wrap">
     <div id="seats-top" class="seat-zone"></div>
     <div id="table-middle">
       <div id="seats-left" class="seat-zone seat-zone-v"></div>
-      <div id="board-wrap">
-        <div id="board-container">
-          <div id="board"></div>
-          <svg id="seq-lines" xmlns="http://www.w3.org/2000/svg" overflow="visible"></svg>
+
+      <!-- Board with side SEQUENCE labels -->
+      <div id="board-outer">
+        <div class="board-side left-side">
+          <span class="side-seq">SEQUENCE</span>
+          <span class="side-rule-txt">TWO EYED JACKS ARE WILD</span>
+        </div>
+        <div id="board-scroll-wrap">
+          <div id="board-wrap">
+            <div id="board-container">
+              <div id="board"></div>
+              <svg id="seq-lines" xmlns="http://www.w3.org/2000/svg" overflow="visible"></svg>
+            </div>
+          </div>
+        </div>
+        <div class="board-side right-side">
+          <span class="side-seq">SEQUENCE</span>
+          <span class="side-rule-txt">ONE EYED JACKS REMOVE</span>
         </div>
       </div>
+
       <div id="seats-right" class="seat-zone seat-zone-v"></div>
     </div>
     <div id="seats-bottom" class="seat-zone"></div>
