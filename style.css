@@ -709,3 +709,69 @@ body.locked { pointer-events: none; }
 
 /* ══ SCORE AVATAR ═══════════════════════════════════════════════════════════ */
 .score-avatar { font-size: .9rem; line-height: 1; }
+
+/* ══ PIP CARDS ══════════════════════════════════════════════════════════════ */
+.card-pip-area {
+  position: absolute;
+  inset: 16px 6px 16px 6px;
+}
+.pip-s {
+  position: absolute;
+  font-size: .62rem;
+  color: #111;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  user-select: none;
+}
+.pip-s.red { color: #c0392b; }
+.pip-s.pip-down { transform: translate(-50%, -50%) rotate(180deg); }
+
+/* ══ ACE ════════════════════════════════════════════════════════════════════ */
+.card-ace {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.65rem; color: #111; line-height: 1;
+  pointer-events: none;
+}
+.card-ace.red { color: #c0392b; }
+
+/* ══ FACE CARDS (J / Q / K) ════════════════════════════════════════════════ */
+.card-face-body {
+  position: absolute;
+  inset: 14px 6px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px;
+  border: 1.5px solid rgba(0,0,0,.12);
+  border-radius: 3px;
+  pointer-events: none;
+}
+.card-face-body.red { border-color: rgba(192,57,43,.2); }
+.face-letter {
+  font-size: 1.55rem; font-weight: bold;
+  color: #1a1a1a; line-height: 1;
+  font-family: Georgia, serif;
+  text-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+.face-letter.red { color: #c0392b; }
+.face-sym {
+  font-size: .8rem; color: #444; line-height: 1;
+}
+.face-sym.red { color: #c0392b; }
+
+/* ══ FLYING CARD ANIMATION ══════════════════════════════════════════════════ */
+.flying-card-anim {
+  position: fixed;
+  width: 44px; height: 62px;
+  border-radius: 6px;
+  background: repeating-linear-gradient(45deg,
+    #7a1010 0px, #7a1010 2px, #600a0a 2px, #600a0a 6px);
+  border: 1.5px solid #b03030;
+  box-shadow: 0 6px 24px rgba(0,0,0,.65), 0 2px 8px rgba(0,0,0,.4);
+  z-index: 9999;
+  pointer-events: none;
+  will-change: transform, opacity;
+  opacity: 1;
+  transform: translate(0, 0) rotate(0deg) scale(1);
+}

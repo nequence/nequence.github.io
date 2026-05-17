@@ -42,6 +42,19 @@ const SUIT_RED  = { H:true, D:true, C:false, S:false };
 const DIRS      = [[0,1],[1,0],[1,1],[1,-1]];
 const WIN_SEQS  = 2;
 
+/* ── Pip layouts: [x%, y%, flip] per rank ────────────────────────────────── */
+const PIP_LAYOUTS = {
+  '2':  [[50,26,0],[50,74,1]],
+  '3':  [[50,22,0],[50,50,0],[50,78,1]],
+  '4':  [[32,26,0],[68,26,0],[32,74,1],[68,74,1]],
+  '5':  [[32,24,0],[68,24,0],[50,50,0],[32,76,1],[68,76,1]],
+  '6':  [[32,24,0],[68,24,0],[32,50,0],[68,50,0],[32,76,1],[68,76,1]],
+  '7':  [[32,20,0],[68,20,0],[50,36,0],[32,54,0],[68,54,0],[32,80,1],[68,80,1]],
+  '8':  [[32,20,0],[68,20,0],[50,33,0],[32,50,0],[68,50,0],[50,67,1],[32,80,1],[68,80,1]],
+  '9':  [[32,20,0],[68,20,0],[32,37,0],[68,37,0],[50,50,0],[32,63,1],[68,63,1],[32,80,1],[68,80,1]],
+  '10': [[32,18,0],[68,18,0],[32,33,0],[68,33,0],[50,43,0],[50,57,1],[32,67,1],[68,67,1],[32,82,1],[68,82,1]],
+};
+
 const P_COLORS = [
   { color:'#c0392b', chipClass:'p1' },
   { color:'#1a5cb5', chipClass:'p2' },
@@ -61,6 +74,47 @@ const symOf         = c => SUIT_SYM[cardSuit(c)] || '';
 const isJack        = c => cardRank(c) === 'J';
 const isTwoEyedJack = c => isJack(c) && isRed(c);
 const isOneEyedJack = c => isJack(c) && !isRed(c);
+
+/* ── Build card face HTML (pip cards, Aces, face cards) ──────────────────── */
+function buildCardFaceHTML(code) {
+  const rk  = cardRank(code);
+  const sym = symOf(code);
+  const red = isRed(code);
+  const rc  = red ? ' red' : '';
+
+  const corners =
+    `<span class="card-tl${rc}">${rk}<br><small>${sym}</small></span>` +
+    `<span class="card-br${rc}">${rk}<br><small>${sym}</small></span>`;
+
+  let badge = '';
+  if (isTwoEyedJack(code))      badge = '<span class="jack-badge wild">WILD</span>';
+  else if (isOneEyedJack(code)) badge = '<span class="jack-badge remove">RMV</span>';
+
+  // Face cards
+  if (rk === 'J' || rk === 'Q' || rk === 'K') {
+    return corners +
+      `<div class="card-face-body${rc}">` +
+        `<span class="face-letter${rc}">${rk}</span>` +
+        `<span class="face-sym${rc}">${sym}</span>` +
+      `</div>` +
+      badge;
+  }
+
+  // Ace — single large pip
+  if (rk === 'A') {
+    return corners + `<span class="card-ace${rc}">${sym}</span>`;
+  }
+
+  // Pip cards
+  const layout = PIP_LAYOUTS[rk];
+  if (!layout) return corners + `<span class="card-center${rc}">${sym}</span>`;
+
+  let html = corners + '<div class="card-pip-area">';
+  layout.forEach(([x, y, flip]) => {
+    html += `<span class="pip-s${rc}${flip ? ' pip-down' : ''}" style="left:${x}%;top:${y}%">${sym}</span>`;
+  });
+  return html + '</div>';
+}
 
 function handSize(n) {
   if (n <= 2) return 7;
@@ -241,6 +295,10 @@ async function startGame() {
 function applyRoomState(room) {
   if (G.animating) return;
 
+  // Snapshot hand sizes before applying new state (to detect card draws)
+  const prevHandSizes = {};
+  G.players.forEach(p => { prevHandSizes[p.id] = (G.hands[p.id] || []).length; });
+
   const turnOrder = unpack(room.turnOrder);
   G.players    = turnOrder.map((id, i) => ({
     id,
@@ -271,6 +329,13 @@ function applyRoomState(room) {
   Renderer.renderBoard();
   Renderer.renderHands();
   Renderer.updateScore();
+
+  // Animate card draw for remote players whose hand grew
+  G.players.forEach(p => {
+    if (p.id !== myId && (G.hands[p.id] || []).length > (prevHandSizes[p.id] || 0)) {
+      animateCardDraw(p.id);
+    }
+  });
 
   requestAnimationFrame(() => {
     document.getElementById('seq-lines').innerHTML = '';
@@ -555,15 +620,7 @@ const Renderer = {
     hand.forEach((code, i) => {
       const cardEl = document.createElement('div');
       cardEl.className = 'card' + (isRed(code) ? ' red-card' : '');
-      let badge = '';
-      if (isTwoEyedJack(code))      badge = '<span class="jack-badge wild">WILD</span>';
-      else if (isOneEyedJack(code)) badge = '<span class="jack-badge remove">RMV</span>';
-      const red = isRed(code), rk = cardRank(code), s = symOf(code);
-      cardEl.innerHTML =
-        `<span class="card-tl${red ? ' red' : ''}">${rk}<br><small>${s}</small></span>` +
-        `<span class="card-center${red ? ' red' : ''}">${s}</span>` +
-        `<span class="card-br${red ? ' red' : ''}">${rk}<br><small>${s}</small></span>` +
-        badge;
+      cardEl.innerHTML = buildCardFaceHTML(code);
       if (!isCur) {
         cardEl.classList.add('disabled');
       } else {
@@ -736,6 +793,7 @@ const GF = {
     const player  = G.cur;
     const cardIdx = G.selIdx;
 
+    const hadDeckCard = G.deck.length > 0;
     const newHand = G.hands[player.id].slice();
     newHand.splice(cardIdx, 1);
     const newDeck = G.deck.slice();
@@ -751,6 +809,7 @@ const GF = {
     Renderer.renderBoard();
     Renderer.clearHighlights();
     if (placed) Renderer.animateChip(r, c);
+    if (hadDeckCard) animateCardDraw(player.id);
 
     const newSeqs = placed ? RE.findNewSequences(r, c, player.id) : [];
     if (newSeqs.length) {
@@ -794,6 +853,45 @@ const GF = {
 /* ══════════════════════════════════════════════════════════════════════════
    UI HELPERS
    ══════════════════════════════════════════════════════════════════════════ */
+
+function animateCardDraw(playerId) {
+  const deckEl = document.getElementById('deck-pile');
+  if (!deckEl) return;
+
+  // Pick destination: bottom bar for self, side panel col for others
+  const isMe  = playerId === myId;
+  let handEl  = document.getElementById('hand-col-' + playerId);
+  if (isMe) {
+    const bar = document.getElementById('active-hand');
+    if (bar && getComputedStyle(bar).display !== 'none') handEl = bar;
+  }
+  if (!handEl) return;
+
+  const fromR = deckEl.getBoundingClientRect();
+  const toR   = handEl.getBoundingClientRect();
+
+  // Start position: center of deck pile
+  const startX = fromR.left + fromR.width  / 2 - 22;
+  const startY = fromR.top  + fromR.height / 2 - 30;
+  // End position: right side of the hand
+  const endX   = toR.right - 48;
+  const endY   = toR.top   + toR.height / 2 - 30;
+
+  const fly = document.createElement('div');
+  fly.className = 'flying-card-anim';
+  fly.style.left = startX + 'px';
+  fly.style.top  = startY + 'px';
+  document.body.appendChild(fly);
+
+  // Two rAF to ensure the initial position is painted before transition
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fly.style.transform  = `translate(${endX - startX}px, ${endY - startY}px) rotate(8deg) scale(0.82)`;
+    fly.style.opacity    = '0';
+    fly.style.transition = 'transform .42s cubic-bezier(.22,.68,0,1.28), opacity .16s ease .3s';
+  }));
+
+  setTimeout(() => fly.remove(), 600);
+}
 
 function showView(id) {
   ['landing-screen', 'lobby-screen', 'game-screen'].forEach(v => {
