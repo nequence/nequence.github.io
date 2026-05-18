@@ -296,10 +296,10 @@ body {
 #game-header {
   width: 100%; max-width: 1300px;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 18px;
-  background: rgba(0,0,0,.42);
+  padding: 6px 18px;
+  background: rgba(0,0,0,.38);
   border: 1px solid rgba(255,255,255,.07);
-  border-radius: 14px;
+  border-radius: 12px;
   backdrop-filter: blur(4px);
   flex-shrink: 0;
 }
@@ -323,8 +323,12 @@ body {
 .banner-pop { animation: bannerPop .3s cubic-bezier(.34,1.56,.64,1) forwards; }
 
 #deck-info {
+  position: absolute; bottom: 14px; right: 16px; z-index: 6;
   display: flex; align-items: center; gap: 7px;
-  font-size: .72rem; opacity: .75;
+  font-size: .72rem; opacity: .88;
+  background: rgba(0,0,0,.48); border-radius: 8px;
+  padding: 5px 10px; border: 1px solid rgba(255,255,255,.1);
+  backdrop-filter: blur(3px);
 }
 #deck-pile {
   position: relative; width: 26px; height: 36px; flex-shrink: 0;
@@ -412,10 +416,10 @@ body {
 }
 .pil-team { font-size: .5rem; text-transform: uppercase; letter-spacing: .5px; }
 
-/* ══ POKER TABLE OVAL ═══════════════════════════════════════════════════════ */
+/* ══ POKER TABLE ════════════════════════════════════════════════════════════ */
 #poker-table {
   background: radial-gradient(ellipse at 50% 46%, #0f7040 0%, var(--felt) 60%, #062d18 100%);
-  border-radius: 40px;
+  border-radius: 14px;
   border: 12px solid var(--wood);
   box-shadow:
     0 0 0 3px var(--gold-dim),
@@ -424,6 +428,7 @@ body {
     inset 0 8px 40px rgba(0,0,0,.28);
   display: flex; flex-direction: column;
   flex: 1; min-width: 0; overflow: hidden;
+  position: relative;
 }
 #table-row {
   display: flex; flex-direction: row;
@@ -433,8 +438,7 @@ body {
   flex: 1; display: flex;
   align-items: center; justify-content: center;
   min-width: 0; padding: 4px;
-  overflow: auto; -webkit-overflow-scrolling: touch;
-  touch-action: pan-x pan-y;
+  overflow: hidden;
 }
 
 /* Table edge strips (inside the oval) */
@@ -818,7 +822,7 @@ body.locked { pointer-events: none; }
 }
 @media (max-width: 900px) {
   :root { --cell: 42px; --gap: 2px; }
-  #poker-table { border-radius: 28px; border-width: 8px; }
+  #poker-table { border-radius: 10px; border-width: 8px; }
   .info-v { min-width: 72px; max-width: 90px; }
   .pil { min-width: 60px; padding: 5px 6px; }
   .pil-avatar { font-size: 1.1rem; }
@@ -827,7 +831,7 @@ body.locked { pointer-events: none; }
 }
 @media (max-width: 680px) {
   :root { --cell: 34px; --gap: 2px; }
-  #poker-table { border-radius: 20px; border-width: 6px; }
+  #poker-table { border-radius: 8px; border-width: 6px; }
   .info-v { min-width: 54px; max-width: 70px; }
   #jack-legend { display: none; }
   .cell-tl, .cell-br { font-size: 10px; }

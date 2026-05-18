@@ -80,14 +80,6 @@
   <div id="game-header">
     <div id="room-badge-header" class="room-badge">ROOM: ------</div>
     <div id="turn-banner">Your Turn</div>
-    <div id="deck-info">
-      <div id="deck-pile">
-        <div class="deck-card-b"></div>
-        <div class="deck-card-b"></div>
-        <div class="deck-card-b"></div>
-      </div>
-      <span id="deck-count">104</span>&thinsp;cards
-    </div>
   </div>
 
   <!-- Score strip -->
@@ -105,6 +97,14 @@
 
       <!-- ══ POKER TABLE (oval) ══ -->
       <div id="poker-table">
+        <div id="deck-info">
+          <div id="deck-pile">
+            <div class="deck-card-b"></div>
+            <div class="deck-card-b"></div>
+            <div class="deck-card-b"></div>
+          </div>
+          <span id="deck-count">104</span>&thinsp;cards
+        </div>
 
         <!-- Top edge: face-down cards for top players -->
         <div id="table-top-edge" class="table-edge edge-h"></div>
@@ -130,7 +130,7 @@
         <!-- Bottom edge: my face-down representation -->
         <div id="table-bottom-edge" class="table-edge edge-h"></div>
 
-      </div>
+      </div><!-- end poker-table -->
       <!-- ══ end poker table ══ -->
 
       <!-- Right player info (outside oval) -->
