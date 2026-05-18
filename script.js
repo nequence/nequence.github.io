@@ -995,33 +995,11 @@ function animateCardDraw(playerId) {
   setTimeout(() => fly.remove(), 600);
 }
 
-function resizeBoard() {
-  const area = document.getElementById('board-area');
-  const gs   = document.getElementById('game-screen');
-  if (!area || !gs || gs.classList.contains('hidden')) return;
-  const rect = area.getBoundingClientRect();
-  if (rect.width < 10 || rect.height < 10) return;
-  const gap  = rect.width < 420 ? 2 : 3;
-  const pad  = 16;
-  const cellW = Math.floor((rect.width  - pad - 9 * gap) / 10);
-  const cellH = Math.floor((rect.height - pad - 9 * gap) / 10);
-  const cell  = Math.max(20, Math.min(cellW, cellH, 64));
-  document.documentElement.style.setProperty('--cell', cell + 'px');
-  document.documentElement.style.setProperty('--gap',  gap  + 'px');
-}
-window.addEventListener('resize', () => requestAnimationFrame(resizeBoard));
-
 function showView(id) {
   ['landing-screen','lobby-screen','game-screen'].forEach(v => {
     const el = document.getElementById(v);
     if (el) el.classList.toggle('hidden', v !== id);
   });
-  if (id === 'game-screen') {
-    // Double rAF ensures the browser has completed layout before we measure
-    requestAnimationFrame(() => requestAnimationFrame(resizeBoard));
-    // Fallback in case first frame hasn't finished layout yet
-    setTimeout(resizeBoard, 120);
-  }
 }
 
 function showError(msg) {

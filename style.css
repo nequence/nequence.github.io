@@ -437,20 +437,13 @@ body {
   display: flex; flex-direction: row;
   flex: 1; min-height: 0; min-width: 0; align-items: stretch;
 }
-#board-area {
-  flex: 1; display: flex;
-  align-items: center; justify-content: center;
-  min-width: 0; padding: 4px;
-  overflow: hidden;
-}
-
 /* Table edge strips (inside the oval) */
 .table-edge {
   display: flex; align-items: center; justify-content: center;
   gap: 10px; flex-shrink: 0;
 }
-.edge-h { flex-direction: row; padding: 8px 16px; min-height: 58px; }
-.edge-v { flex-direction: column; padding: 8px 6px; min-width: 58px; }
+.edge-h { flex-direction: row; padding: 6px 12px; min-height: 52px; }
+.edge-v { flex-direction: column; padding: 6px 5px; min-width: 52px; }
 
 /* Edge slot: one player's face-down card fan */
 .edge-slot {
@@ -505,23 +498,28 @@ body {
 .my-bar-team   { font-size: .58rem; text-transform: uppercase; letter-spacing: .5px; margin-top: 1px; }
 #active-hand   { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 
-/* ══ BOARD WRAP ═════════════════════════════════════════════════════════════ */
-#board-wrap { flex-shrink: 0; display: flex; justify-content: center; }
-
+/* ══ BOARD — fills the entire board-area with 1fr grid ═════════════════════ */
+#board-area {
+  flex: 1; display: flex;
+  min-width: 0; min-height: 0;
+  padding: 0;
+}
+#board-wrap {
+  flex: 1; display: flex;
+  min-width: 0; min-height: 0;
+}
 #board-container {
-  background: #1a0d02;
-  border-radius: 8px;
-  padding: 8px;
+  flex: 1; display: flex;
   position: relative;
-  box-shadow: 0 0 0 3px var(--gold-dim), 0 0 0 7px var(--wood-dark), 0 8px 32px rgba(0,0,0,.7);
+  min-width: 0; min-height: 0;
 }
 #board {
+  flex: 1;
   display: grid;
-  grid-template-columns: repeat(10, var(--cell));
-  grid-template-rows:    repeat(10, var(--cell));
-  gap: var(--gap);
-  border-radius: 3px;
-  position: relative;
+  grid-template-columns: repeat(10, 1fr);
+  grid-template-rows:    repeat(10, 1fr);
+  gap: 2px;
+  min-width: 0; min-height: 0;
 }
 #seq-lines {
   position: absolute; pointer-events: none; z-index: 20;
@@ -530,16 +528,17 @@ body {
 
 /* ══ CELLS ══════════════════════════════════════════════════════════════════ */
 .cell {
-  width: var(--cell); height: var(--cell);
+  /* fills its 1fr grid slot entirely */
+  min-width: 0; min-height: 0;
   background: linear-gradient(165deg, #fefef5 55%, #f0e6d0);
   border: 1px solid #c8b890;
-  border-radius: 4px;
+  border-radius: 3px;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   cursor: default; position: relative;
   transition: background .12s, border-color .12s, transform .12s, box-shadow .12s;
   user-select: none; overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(255,255,255,.65), 0 1px 3px rgba(0,0,0,.35);
+  box-shadow: inset 0 1px 2px rgba(255,255,255,.65), 0 1px 2px rgba(0,0,0,.3);
 }
 .cell::after {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 40%;
@@ -821,20 +820,15 @@ body.locked { pointer-events: none; }
 
 /* ══ RESPONSIVE ═════════════════════════════════════════════════════════════ */
 @media (max-width: 1100px) {
-  :root { --cell: 48px; }
   .info-v { min-width: 80px; }
 }
 @media (max-width: 900px) {
-  :root { --cell: 42px; --gap: 2px; }
   #poker-table { border-radius: 10px; border-width: 8px; }
   .info-v { min-width: 72px; max-width: 90px; }
   .pil { min-width: 60px; padding: 5px 6px; }
   .pil-avatar { font-size: 1.1rem; }
-  .cell-tl, .cell-br { font-size: .46rem; }
-  .cell-mid { font-size: .76rem; }
 }
 @media (max-width: 680px) {
-  :root { --cell: 34px; --gap: 2px; }
   #poker-table { border-radius: 8px; border-width: 6px; }
   .info-v { min-width: 54px; max-width: 70px; }
   #jack-legend { display: none; }
@@ -848,13 +842,12 @@ body.locked { pointer-events: none; }
   #turn-banner { font-size: .82rem; padding: 5px 16px; order: -1; width: 100%; text-align: center; }
   .room-badge  { font-size: .6rem; }
   #score-strip { padding: 5px 12px; gap: 8px; }
-  .edge-card   { width: 22px; height: 32px; }
-  .edge-h      { min-height: 44px; padding: 6px 10px; }
-  .edge-v      { min-width: 44px; padding: 6px; }
+  .edge-card   { width: 20px; height: 30px; }
+  .edge-h      { min-height: 40px; padding: 5px 8px; }
+  .edge-v      { min-width: 40px; padding: 5px; }
 }
 @media (max-width: 440px) {
-  :root { --cell: 28px; }
-  .cell-tl, .cell-br { font-size: 10px !important; }
-  .cell-mid { font-size: 12px !important; }
+  .cell-tl, .cell-br { font-size: 9px !important; }
+  .cell-mid { font-size: 11px !important; }
   .card { width: 44px; height: 62px; }
 }
