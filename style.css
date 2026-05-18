@@ -550,28 +550,28 @@ body {
   border-color: #2a6830;
   box-shadow: inset 0 1px 4px rgba(0,0,0,.4);
 }
-.free-star  { font-size: .9rem; color: var(--gold); line-height: 1; z-index: 1; }
-.free-label { font-size: .32rem; color: rgba(244,197,66,.7); letter-spacing: .4px; z-index: 1; }
+.free-star  { font-size: clamp(14px, 2.2vmin, 26px); color: var(--gold); line-height: 1; z-index: 1; }
+.free-label { font-size: clamp(7px, .9vmin, 11px); color: rgba(244,197,66,.7); letter-spacing: .4px; z-index: 1; }
 
 .cell-tl {
   position: absolute; top: 2px; left: 3px;
-  font-size: .52rem; font-weight: bold;
-  color: #1a1a1a; line-height: 1.15; z-index: 1;
+  font-size: clamp(11px, 1.5vmin, 20px); font-weight: bold;
+  color: #1a1a1a; line-height: 1.1; z-index: 1;
   display: flex; flex-direction: column; align-items: center;
 }
 .cell-br {
   position: absolute; bottom: 2px; right: 3px;
-  font-size: .52rem; font-weight: bold;
-  color: #1a1a1a; line-height: 1.15; z-index: 1;
+  font-size: clamp(11px, 1.5vmin, 20px); font-weight: bold;
+  color: #1a1a1a; line-height: 1.1; z-index: 1;
   transform: rotate(180deg);
   display: flex; flex-direction: column; align-items: center;
 }
 .cell-mid {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%,-50%);
-  font-size: .85rem; color: #222; line-height: 1; z-index: 1;
+  font-size: clamp(16px, 2.4vmin, 32px); color: #222; line-height: 1; z-index: 1;
 }
-.cell-ts { font-size: .75em; line-height: 1; }
+.cell-ts { font-size: clamp(9px, 1.1vmin, 15px); line-height: 1; }
 .cell-tl.red, .cell-br.red { color: #c0392b; }
 .cell-mid.red               { color: #c0392b; }
 
@@ -832,11 +832,7 @@ body.locked { pointer-events: none; }
   #poker-table { border-radius: 8px; border-width: 6px; }
   .info-v { min-width: 54px; max-width: 70px; }
   #jack-legend { display: none; }
-  .cell-tl, .cell-br { font-size: 10px; }
-  .cell-ts     { display: none; }
-  .cell-mid    { font-size: 13px; }
   .free-label  { display: none; }
-  .free-star   { font-size: .75rem; }
   .card        { width: 50px; height: 72px; }
   #game-header { padding: 6px 12px; flex-wrap: wrap; gap: 4px; justify-content: center; }
   #turn-banner { font-size: .82rem; padding: 5px 16px; order: -1; width: 100%; text-align: center; }
@@ -847,7 +843,5 @@ body.locked { pointer-events: none; }
   .edge-v      { min-width: 40px; padding: 5px; }
 }
 @media (max-width: 440px) {
-  .cell-tl, .cell-br { font-size: 9px !important; }
-  .cell-mid { font-size: 11px !important; }
   .card { width: 44px; height: 62px; }
 }
