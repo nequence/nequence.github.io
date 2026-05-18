@@ -18,7 +18,7 @@
   --gap:        3px;
 }
 
-html { height: 100%; font-size: 18px; }
+html { height: 100%; font-size: 20px; }
 body { height: 100%; }
 
 body {
@@ -307,12 +307,12 @@ body {
 }
 .room-badge {
   font-family: 'Courier New', monospace;
-  font-size: .72rem; letter-spacing: 2px;
+  font-size: .9rem; letter-spacing: 2px;
   color: var(--gold-dim); opacity: .8;
 }
 #turn-banner {
-  font-size: 1.15rem; font-weight: bold;
-  padding: 7px 30px; border-radius: 30px;
+  font-size: 1.3rem; font-weight: bold;
+  padding: 8px 32px; border-radius: 30px;
   border: 2px solid var(--gold-dim);
   background: rgba(0,0,0,.3);
   letter-spacing: 1px;
@@ -354,10 +354,10 @@ body {
   border: 1px solid rgba(255,255,255,.07);
   width: 100%; max-width: 1300px; flex-shrink: 0;
 }
-.score-block { display: flex; align-items: center; gap: 6px; font-size: .9rem; }
-.score-dot   { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.score-block { display: flex; align-items: center; gap: 8px; font-size: 1rem; }
+.score-dot   { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
 .score-label { font-weight: bold; }
-.score-avs   { font-size: 1rem; }
+.score-avs   { font-size: 1.15rem; }
 .score-pips  { display: flex; gap: 4px; }
 .pip {
   width: 18px; height: 18px; border-radius: 50%;
@@ -412,13 +412,13 @@ body {
   border-color: var(--gold);
   box-shadow: 0 0 16px rgba(244,197,66,.32);
 }
-.pil-avatar { font-size: 1.6rem; line-height: 1; }
+.pil-avatar { font-size: 1.9rem; line-height: 1; }
 .pil-name {
-  font-size: .75rem; font-weight: bold;
+  font-size: .88rem; font-weight: bold;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 90px; color: #f0e0c0;
+  max-width: 100px; color: #f0e0c0;
 }
-.pil-team { font-size: .65rem; text-transform: uppercase; letter-spacing: .5px; }
+.pil-team { font-size: .76rem; text-transform: uppercase; letter-spacing: .5px; }
 
 /* ══ POKER TABLE ════════════════════════════════════════════════════════════ */
 #poker-table {
@@ -494,9 +494,9 @@ body {
   border-color: var(--gold);
   box-shadow: 0 0 16px rgba(244,197,66,.32);
 }
-.my-bar-avatar { font-size: 1.85rem; line-height: 1; }
-.my-bar-name   { font-size: .9rem; font-weight: bold; color: #f0e0c0; }
-.my-bar-team   { font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; margin-top: 1px; }
+.my-bar-avatar { font-size: 2.1rem; line-height: 1; }
+.my-bar-name   { font-size: 1.05rem; font-weight: bold; color: #f0e0c0; }
+.my-bar-team   { font-size: .85rem; text-transform: uppercase; letter-spacing: .5px; margin-top: 1px; }
 #active-hand   { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 
 /* ══ BOARD — fills the entire board-area with 1fr grid ═════════════════════ */
@@ -551,18 +551,18 @@ body {
   border-color: #2a6830;
   box-shadow: inset 0 1px 4px rgba(0,0,0,.4);
 }
-.free-star  { font-size: clamp(14px, 2.2vmin, 26px); color: var(--gold); line-height: 1; z-index: 1; }
-.free-label { font-size: clamp(7px, .9vmin, 11px); color: rgba(244,197,66,.7); letter-spacing: .4px; z-index: 1; }
+.free-star  { font-size: clamp(16px, 3vmin, 34px); color: var(--gold); line-height: 1; z-index: 1; }
+.free-label { font-size: clamp(8px, 1.1vmin, 14px); color: rgba(244,197,66,.7); letter-spacing: .4px; z-index: 1; }
 
 .cell-tl {
   position: absolute; top: 2px; left: 3px;
-  font-size: clamp(11px, 1.5vmin, 20px); font-weight: bold;
+  font-size: clamp(13px, 2vmin, 26px); font-weight: bold;
   color: #1a1a1a; line-height: 1.1; z-index: 1;
   display: flex; flex-direction: column; align-items: center;
 }
 .cell-br {
   position: absolute; bottom: 2px; right: 3px;
-  font-size: clamp(11px, 1.5vmin, 20px); font-weight: bold;
+  font-size: clamp(13px, 2vmin, 26px); font-weight: bold;
   color: #1a1a1a; line-height: 1.1; z-index: 1;
   transform: rotate(180deg);
   display: flex; flex-direction: column; align-items: center;
@@ -570,9 +570,9 @@ body {
 .cell-mid {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%,-50%);
-  font-size: clamp(16px, 2.4vmin, 32px); color: #222; line-height: 1; z-index: 1;
+  font-size: clamp(20px, 3.2vmin, 42px); color: #222; line-height: 1; z-index: 1;
 }
-.cell-ts { font-size: clamp(9px, 1.1vmin, 15px); line-height: 1; }
+.cell-ts { font-size: clamp(10px, 1.4vmin, 18px); line-height: 1; }
 .cell-tl.red, .cell-br.red { color: #c0392b; }
 .cell-mid.red               { color: #c0392b; }
 
@@ -613,9 +613,13 @@ body {
 
 /* ══ CHIPS ══════════════════════════════════════════════════════════════════ */
 .chip {
-  width: 76%; height: 76%; border-radius: 50%;
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%,-50%);
+  /* height-based sizing + aspect-ratio keeps it circular in rectangular cells */
+  height: 72%;
+  aspect-ratio: 1 / 1;
+  max-width: 72%;
+  border-radius: 50%;
   border: 2px solid rgba(255,255,255,.28); z-index: 2;
 }
 .chip::before {
@@ -656,7 +660,7 @@ body {
 
 /* ══ HAND CARDS (full size, interactive) ════════════════════════════════════ */
 .card {
-  width: 72px; height: 100px;
+  width: 82px; height: 114px;
   background: linear-gradient(165deg, #fffef5 65%, #ede5cc);
   border: 1.5px solid #bbb; border-radius: 8px;
   cursor: pointer; position: relative; overflow: hidden; flex-shrink: 0;
@@ -690,31 +694,31 @@ body {
 
 /* Card labels */
 .card-tl, .card-br {
-  position: absolute; font-size: .82rem; font-weight: bold;
+  position: absolute; font-size: 1rem; font-weight: bold;
   line-height: 1.1; color: #111;
 }
-.card-tl { top: 4px; left: 6px; }
-.card-br { bottom: 4px; right: 6px; transform: rotate(180deg); }
+.card-tl { top: 5px; left: 6px; }
+.card-br { bottom: 5px; right: 6px; transform: rotate(180deg); }
 .card-center {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%,-50%);
-  font-size: 1.5rem; color: #111; line-height: 1;
+  font-size: 1.75rem; color: #111; line-height: 1;
 }
 .card-tl.red, .card-br.red, .card-center.red { color: #c0392b; }
 
 .jack-badge {
-  position: absolute; bottom: 14px; left: 50%;
+  position: absolute; bottom: 16px; left: 50%;
   transform: translateX(-50%);
-  font-size: .6rem; font-weight: bold;
-  padding: 2px 5px; border-radius: 3px; white-space: nowrap; z-index: 2;
+  font-size: .68rem; font-weight: bold;
+  padding: 2px 6px; border-radius: 3px; white-space: nowrap; z-index: 2;
 }
 .jack-badge.wild   { background: #1a7a40; color: #fff; }
 .jack-badge.remove { background: #922b21; color: #fff; }
 
 /* Pip cards */
-.card-pip-area { position: absolute; inset: 18px 7px 18px 7px; }
+.card-pip-area { position: absolute; inset: 20px 8px 20px 8px; }
 .pip-s {
-  position: absolute; font-size: .78rem; color: #111;
+  position: absolute; font-size: .9rem; color: #111;
   line-height: 1; transform: translate(-50%,-50%);
   pointer-events: none; user-select: none;
 }
@@ -725,26 +729,26 @@ body {
 .card-ace {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%,-50%);
-  font-size: 2rem; color: #111; line-height: 1; pointer-events: none;
+  font-size: 2.4rem; color: #111; line-height: 1; pointer-events: none;
 }
 .card-ace.red { color: #c0392b; }
 
 /* Face cards */
 .card-face-body {
-  position: absolute; inset: 16px 6px;
+  position: absolute; inset: 18px 6px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 2px; border: 1.5px solid rgba(0,0,0,.12); border-radius: 3px; pointer-events: none;
 }
 .card-face-body.red { border-color: rgba(192,57,43,.2); }
-.face-letter { font-size: 1.85rem; font-weight: bold; color: #1a1a1a; line-height: 1; }
+.face-letter { font-size: 2.1rem; font-weight: bold; color: #1a1a1a; line-height: 1; }
 .face-letter.red { color: #c0392b; }
-.face-sym    { font-size: 1rem; color: #444; line-height: 1; }
+.face-sym    { font-size: 1.15rem; color: #444; line-height: 1; }
 .face-sym.red { color: #c0392b; }
 
 /* ══ JACK LEGEND ════════════════════════════════════════════════════════════ */
 #jack-legend {
-  font-size: .88rem; opacity: .55;
-  display: flex; gap: 10px; align-items: center; margin-top: 4px;
+  font-size: 1rem; opacity: .65;
+  display: flex; gap: 12px; align-items: center; margin-top: 4px;
 }
 .leg.wild   { color: #6ddc8c; }
 .leg.remove { color: #ff8888; }
@@ -834,7 +838,7 @@ body.locked { pointer-events: none; }
   .info-v { min-width: 54px; max-width: 70px; }
   #jack-legend { display: none; }
   .free-label  { display: none; }
-  .card        { width: 56px; height: 80px; }
+  .card        { width: 62px; height: 88px; }
   #game-header { padding: 6px 12px; flex-wrap: wrap; gap: 4px; justify-content: center; }
   #turn-banner { font-size: .82rem; padding: 5px 16px; order: -1; width: 100%; text-align: center; }
   .room-badge  { font-size: .6rem; }
@@ -844,5 +848,5 @@ body.locked { pointer-events: none; }
   .edge-v      { min-width: 40px; padding: 5px; }
 }
 @media (max-width: 440px) {
-  .card { width: 50px; height: 70px; }
+  .card { width: 56px; height: 78px; }
 }
