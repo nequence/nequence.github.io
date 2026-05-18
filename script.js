@@ -1016,7 +1016,12 @@ function showView(id) {
     const el = document.getElementById(v);
     if (el) el.classList.toggle('hidden', v !== id);
   });
-  if (id === 'game-screen') requestAnimationFrame(resizeBoard);
+  if (id === 'game-screen') {
+    // Double rAF ensures the browser has completed layout before we measure
+    requestAnimationFrame(() => requestAnimationFrame(resizeBoard));
+    // Fallback in case first frame hasn't finished layout yet
+    setTimeout(resizeBoard, 120);
+  }
 }
 
 function showError(msg) {

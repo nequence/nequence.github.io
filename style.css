@@ -287,8 +287,9 @@ body {
 /* ══ GAME SCREEN ════════════════════════════════════════════════════════════ */
 #game-screen {
   display: flex; flex-direction: column; align-items: center;
-  width: 100%; min-height: 100vh;
-  padding: 8px 8px 16px; gap: 8px;
+  width: 100%; height: 100vh;
+  padding: 8px 8px 12px; gap: 6px;
+  overflow: hidden;
 }
 #game-screen.hidden { display: none !important; }
 
@@ -374,7 +375,8 @@ body {
 /* ══ GAME LAYOUT ════════════════════════════════════════════════════════════ */
 #game-layout {
   display: flex; flex-direction: column; align-items: center;
-  gap: 6px; width: 100%; max-width: 1300px; flex: 1;
+  gap: 6px; width: 100%; max-width: 1300px;
+  flex: 1; min-height: 0;
 }
 #mid-row {
   display: flex; flex-direction: row;
@@ -388,6 +390,7 @@ body {
   flex-direction: row; gap: 10px;
   justify-content: center; align-items: flex-end;
   width: 100%; flex-wrap: wrap; padding: 0 40px;
+  flex-shrink: 0;
 }
 .info-v {
   flex-direction: column; gap: 10px;
@@ -427,12 +430,12 @@ body {
     0 28px 90px rgba(0,0,0,.85),
     inset 0 8px 40px rgba(0,0,0,.28);
   display: flex; flex-direction: column;
-  flex: 1; min-width: 0; overflow: hidden;
+  flex: 1; min-width: 0; min-height: 0; overflow: hidden;
   position: relative;
 }
 #table-row {
   display: flex; flex-direction: row;
-  flex: 1; min-height: 0; align-items: stretch;
+  flex: 1; min-height: 0; min-width: 0; align-items: stretch;
 }
 #board-area {
   flex: 1; display: flex;
@@ -484,6 +487,7 @@ body {
 #bottom-player {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   width: 100%; padding-top: 2px;
+  flex-shrink: 0;
 }
 #my-info-bar {
   display: flex; align-items: center; gap: 10px;
