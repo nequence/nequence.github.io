@@ -11,15 +11,27 @@ const db = firebase.database();
 let myId = sessionStorage.getItem('seq_uid');
 if (!myId) { myId = crypto.randomUUID(); sessionStorage.setItem('seq_uid', myId); }
 let myName   = '';
-let myAvatar = '🦁';
+let myAvatar = '0|0|0|0';
 let myCode   = '';
 let roomRef  = null;
 let roomOff  = null;
 
 const urlCode = (location.hash.slice(1) || '').toUpperCase().trim();
 
-/* ── Constants ───────────────────────────────────────────────────────────── */
-const AVATARS = ['🦁','🐯','🐺','🦊','🐻','🐸','🐵','🦄','🐲','🦅','🤠','😎','🧙','👑','🥷','🎭'];
+/* ── Avatar system ───────────────────────────────────────────────────────── */
+const AV_COLORS = [
+  ['#1a1a2e','#16213e'],  // Dark navy
+  ['#1a0a2e','#2d1b69'],  // Deep purple
+  ['#0a1a0a','#1a3a1a'],  // Dark forest
+  ['#2e0a0a','#5a1a1a'],  // Dark crimson
+  ['#0a1a2e','#1a3a5a'],  // Dark ocean
+  ['#2e2a0a','#5a4a1a'],  // Dark gold
+  ['#1a1a1a','#2a2a2a'],  // Charcoal
+  ['#1a0a1a','#3a1a3a'],  // Dark plum
+];
+const AV_FACES = ['🦊','🐺','🐸','🐱','🦁','🐧','🐮','🐻'];
+const AV_HATS  = ['','👑','🎩','🧢','🪖','🎭'];
+const AV_ACCS  = ['','👓','✨','🎀'];
 
 const TEAM_COLORS = ['#c0392b','#1a5cb5','#1e8449','#c89010'];
 const TEAM_CLS    = ['team-0','team-1','team-2','team-3'];
@@ -128,23 +140,74 @@ const G = {
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
-   AVATAR PICKER
+   AVATAR HELPERS
    ══════════════════════════════════════════════════════════════════════════ */
+
+function parseAvatar(str) {
+  if (!str || !str.includes('|')) return { c:0, f:0, h:0, a:0 };
+  const [c,f,h,a] = str.split('|').map(Number);
+  return { c: c||0, f: f||0, h: h||0, a: a||0 };
+}
+
+function renderAvatar(str, size = 'md') {
+  const { c, f, h, a } = parseAvatar(str);
+  const [c1,c2] = AV_COLORS[c] || AV_COLORS[0];
+  const face = AV_FACES[f] || AV_FACES[0];
+  const hat  = AV_HATS[h]  || '';
+  const acc  = AV_ACCS[a]  || '';
+  return `<div class="av-frame av-${size}" style="background:radial-gradient(circle at 38% 32%,${c1},${c2})">` +
+    (hat ? `<span class="av-hat-el">${hat}</span>` : '') +
+    `<span class="av-face-el">${face}</span>` +
+    (acc ? `<span class="av-acc-el">${acc}</span>` : '') +
+    `</div>`;
+}
 
 function buildAvatarPicker() {
   const picker = document.getElementById('avatar-picker');
-  AVATARS.forEach((emoji, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'avatar-opt' + (i === 0 ? ' selected' : '');
-    btn.textContent = emoji;
-    btn.setAttribute('type', 'button');
-    btn.addEventListener('click', () => {
-      myAvatar = emoji;
-      document.querySelectorAll('.avatar-opt').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
+  picker.innerHTML = '';
+
+  let sel = parseAvatar(myAvatar);
+
+  // Preview
+  const previewWrap = document.createElement('div');
+  previewWrap.className = 'av-preview-wrap';
+  previewWrap.innerHTML = renderAvatar(myAvatar, 'lg');
+  picker.appendChild(previewWrap);
+
+  function refresh() {
+    myAvatar = `${sel.c}|${sel.f}|${sel.h}|${sel.a}`;
+    previewWrap.innerHTML = renderAvatar(myAvatar, 'lg');
+    picker.querySelectorAll('.av-opt').forEach(btn => {
+      const { cat, idx } = btn.dataset;
+      btn.classList.toggle('selected', sel[cat] === Number(idx));
     });
-    picker.appendChild(btn);
-  });
+  }
+
+  function makeRow(label, cat, items, renderFn) {
+    const wrap = document.createElement('div');
+    wrap.className = 'av-cat';
+    wrap.innerHTML = `<div class="av-cat-label">${label}</div>`;
+    const row = document.createElement('div');
+    row.className = 'av-row';
+    items.forEach((item, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'av-opt' + (sel[cat] === i ? ' selected' : '');
+      btn.setAttribute('type', 'button');
+      btn.dataset.cat = cat;
+      btn.dataset.idx = i;
+      btn.innerHTML = renderFn(item, i);
+      btn.addEventListener('click', () => { sel[cat] = i; refresh(); });
+      row.appendChild(btn);
+    });
+    wrap.appendChild(row);
+    picker.appendChild(wrap);
+  }
+
+  makeRow('Color', 'c', AV_COLORS, ([c1,c2]) =>
+    `<div class="av-color-swatch" style="background:radial-gradient(circle,${c1},${c2})"></div>`);
+  makeRow('Face',  'f', AV_FACES, f => f);
+  makeRow('Hat',   'h', AV_HATS,  h => h || '∅');
+  makeRow('Extra', 'a', AV_ACCS,  a => a || '∅');
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -405,9 +468,8 @@ function renderLobby(room) {
 
     const tile = document.createElement('div');
     tile.className = 'player-tile' + (id === myId ? ' player-tile-me' : '');
-    tile.style.borderColor = color;
-    tile.style.boxShadow   = `0 0 22px ${color}50, inset 0 1px 0 rgba(255,255,255,.08)`;
     tile.style.animationDelay = (i * 0.06) + 's';
+    tile.style.setProperty('--tile-color', color);
 
     // Kick button (host only, not for self)
     let kickHTML = '';
@@ -428,12 +490,11 @@ function renderLobby(room) {
       }
       dotsHTML += '</div>';
     }
-
     tile.innerHTML =
       kickHTML +
-      `<div class="tile-avatar">${p.avatar || '🃏'}</div>` +
-      `<div class="tile-name">${p.name}${id === room.hostId ? ' 👑' : ''}</div>` +
-      `<div class="tile-team-badge" style="color:${color};border-color:${color}60;background:${color}18">` +
+      `<div class="tile-avatar-wrap">${renderAvatar(p.avatar, 'sm')}</div>` +
+      `<div class="tile-name">${p.name}${id === room.hostId ? ' <span class="tile-host-badge">👑</span>' : ''}</div>` +
+      `<div class="tile-team-badge" style="color:${color};border-color:${color}55;background:${color}15">` +
         TEAM_LABELS[ti] +
       `</div>` +
       dotsHTML;
@@ -605,7 +666,7 @@ const Renderer = {
     const myBar = document.getElementById('my-info-bar');
     if (myBar && me) {
       myBar.innerHTML =
-        `<div class="my-bar-avatar">${me.avatar || '🃏'}</div>` +
+        `<div class="my-bar-avatar">${renderAvatar(me.avatar, 'md')}</div>` +
         `<div>` +
           `<div class="my-bar-name" style="color:${me.color}">${me.name} ✦</div>` +
           `<div class="my-bar-team" style="color:${me.color}">Team ${TEAM_LABELS[me.teamIdx ?? 0]}</div>` +
@@ -632,7 +693,7 @@ const Renderer = {
     el.className = 'pil';
     el.id = 'pil-' + player.id;
     el.innerHTML =
-      `<div class="pil-avatar">${player.avatar || '🃏'}</div>` +
+      `<div class="pil-avatar">${renderAvatar(player.avatar, 'sm')}</div>` +
       `<div class="pil-name">${player.name}</div>` +
       `<div class="pil-team" style="color:${player.color}">Team ${TEAM_LABELS[player.teamIdx ?? 0]}</div>`;
     return el;
@@ -767,7 +828,7 @@ const Renderer = {
       block.innerHTML =
         `<span class="score-dot" style="background:${color}"></span>` +
         `<span class="score-label" style="color:${color}">Team ${TEAM_LABELS[t]}</span>` +
-        `<span class="score-avs">${members.map(p => p.avatar).join('')}</span>` +
+        `<span class="score-avs">${members.map(p => renderAvatar(p.avatar, 'sm')).join('')}</span>` +
         `<div class="score-pips" id="pips-team-${t}">` +
           Array.from({ length: WIN_SEQS }, () =>
             `<span class="pip" style="color:${color}"></span>`).join('') +

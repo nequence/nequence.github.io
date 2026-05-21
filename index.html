@@ -27,9 +27,9 @@
       <input type="text" id="name-input" class="txt-input" placeholder="Enter your name…" maxlength="20" autocomplete="off"/>
     </div>
 
-    <div class="field-wrap" style="align-items:center">
+    <div class="field-wrap" style="align-items:stretch">
       <div class="avatar-row-label">Pick your avatar</div>
-      <div id="avatar-picker" class="avatar-picker"></div>
+      <div id="avatar-picker"></div>
     </div>
 
     <div id="normal-landing">
@@ -71,6 +71,12 @@
   <!-- Main -->
   <div id="lobby-main">
 
+    <!-- Big logo -->
+    <div id="lobby-logo-area">
+      <div class="lobby-logo-text">SEQUENCE</div>
+      <div class="lobby-logo-sub">Online Multiplayer</div>
+    </div>
+
     <!-- Host controls -->
     <div id="team-setup" class="hidden">
       <div class="lobby-ctrl-row">
@@ -92,7 +98,7 @@
 
     <!-- Non-host team picker -->
     <div id="team-view" class="hidden">
-      <div class="lc-section" style="margin-bottom:10px;text-align:center">Choose Your Team</div>
+      <div class="lc-section" style="margin-bottom:10px;text-align:center;opacity:.4;letter-spacing:2px">Choose Your Team</div>
       <div id="team-join-btns" class="team-join-btns"></div>
     </div>
 
@@ -125,7 +131,7 @@
       <!-- Left player info (outside oval) -->
       <div id="left-info-zone" class="info-zone info-v"></div>
 
-      <!-- ══ POKER TABLE (oval) ══ -->
+      <!-- ══ POKER TABLE ══ -->
       <div id="poker-table">
         <div id="deck-info">
           <div id="deck-pile">
@@ -136,14 +142,11 @@
           <span id="deck-count">104</span>&thinsp;cards
         </div>
 
-        <!-- Top edge: face-down cards for top players -->
         <div id="table-top-edge" class="table-edge edge-h"></div>
 
         <div id="table-row">
-          <!-- Left edge: face-down cards for left players -->
           <div id="table-left-edge" class="table-edge edge-v"></div>
 
-          <!-- Board -->
           <div id="board-area">
             <div id="board-wrap">
               <div id="board-container">
@@ -153,15 +156,11 @@
             </div>
           </div>
 
-          <!-- Right edge: face-down cards for right players -->
           <div id="table-right-edge" class="table-edge edge-v"></div>
         </div>
 
-        <!-- Bottom edge: my face-down representation -->
         <div id="table-bottom-edge" class="table-edge edge-h"></div>
-
-      </div><!-- end poker-table -->
-      <!-- ══ end poker table ══ -->
+      </div>
 
       <!-- Right player info (outside oval) -->
       <div id="right-info-zone" class="info-zone info-v"></div>
@@ -192,7 +191,7 @@
   </div>
 </div>
 
-<!-- ═══════════════════ ROTATE OVERLAY (phones portrait) ══════════════════ -->
+<!-- ═══════════════════ ROTATE OVERLAY ══════════════════ -->
 <div id="rotate-overlay">
   <div id="rotate-content">
     <div id="rotate-icon">📱</div>
