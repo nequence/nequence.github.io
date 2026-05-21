@@ -25,17 +25,19 @@ const TEAM_COLORS = ['#c0392b','#1a5cb5','#1e8449','#c89010'];
 const TEAM_CLS    = ['team-0','team-1','team-2','team-3'];
 const TEAM_LABELS = ['Red','Blue','Green','Gold'];
 
+// Board layout: rows top→bottom, columns left→right
+// Verified from physical board (col 1–10 given by user, transposed to rows)
 const BOARD_LAYOUT = [
-  [null, '2S','3S','4S','5S','6S','7S','8S','9S', null],
-  ['6C', '5C','4C','3C','2C','AH','KH','QH','10H','10S'],
-  ['7C', 'AS','2D','3D','4D','5D','6D','7D','8D', 'QS'],
-  ['8C', 'KS','6C','5H','4H','3H','2H','AD','9D', 'KS'],
-  ['9C', 'QS','7C','6H','5H','4H','3H','KC','10D','AS'],
-  ['10C','10S','8C','7H','6H','5H','QH','AC','QD','2S'],
-  ['QC', '9S','9C','8H','9H','10H','KH','KD','2D','3S'],
-  ['KC', '8S','10C','QC','KC','AC','AD','QD','3D','4S'],
-  ['AC', '7S','6S','5S','4S','3S','2S','2H','3H','5S'],
-  [null, '2C','3C','4C','5C','6C','7C','8C','9C', null],
+  [null, 'AC', 'KC', 'QC', '10C', '9C',  '8C', '7C', '6C', null],
+  ['AD', '7S', '8S', '9S', '10S', 'QC',  'KC', 'AC', '5C', '2C'],
+  ['KD', '6S', '10C','9C', '8C',  '7S',  '6C', '2D', '4C', '3C'],
+  ['QD', '5S', 'QC', '8H', '7H',  '6H',  '5C', '3D', '3C', '4C'],
+  ['10D','4S', 'KC', '9H', '2H',  '5H',  '4C', '4D', '2C', '5C'],
+  ['9D', '3S', 'AC', '10H','3H',  '4H',  '3C', '5D', 'AH', '6C'],
+  ['8D', '2S', 'AD', 'QH', 'KH',  'AH',  '2C', '6D', 'KH', '7C'],
+  ['7D', '2H', 'KD', 'QD', '10D', '9D',  '8D', '7D', 'QH', '8C'],
+  ['6D', '3H', '4H', '5H', '6H',  '7H',  '8H', '9H', '10H','9C'],
+  [null, '5D', '4D', '3D', '2D',  'AS',  'KS', 'QS', '10S',null],
 ];
 
 const SUIT_SYM  = { H:'♥', D:'♦', C:'♣', S:'♠' };

@@ -394,7 +394,7 @@ body {
   display:flex; flex-direction:column; align-items:center;
   width:100%; height:100vh;
   padding:8px 8px 10px; gap:6px;
-  overflow:hidden;
+  overflow:hidden; /* keeps page from scrolling; glows inside clip but z-index stack handles hand */
 }
 #game-screen.hidden { display:none !important; }
 
@@ -490,7 +490,7 @@ body {
 }
 
 /* ── Info zones ──────────────────────────────────────────────────────────── */
-.info-zone { display:flex; }
+.info-zone { display:flex; position:relative; z-index:5; }
 .info-h {
   flex-direction:row; gap:12px;
   justify-content:center; align-items:flex-end;
@@ -532,12 +532,13 @@ body {
     inset 0 1px 0 rgba(255,255,255,.06);
   backdrop-filter:var(--blur-md); -webkit-backdrop-filter:var(--blur-md);
   display:flex; flex-direction:column;
-  flex:1; min-width:0; min-height:0; overflow:hidden;
+  flex:1; min-width:0; min-height:0; overflow:visible;
   position:relative;
 }
 #table-row {
   display:flex; flex-direction:row;
   flex:1; min-height:0; min-width:0; align-items:stretch;
+  overflow:visible;
 }
 .table-edge {
   display:flex; align-items:center; justify-content:center;
@@ -579,6 +580,7 @@ body {
 #bottom-player {
   display:flex; flex-direction:column; align-items:center; gap:8px;
   width:100%; padding-top:2px; flex-shrink:0;
+  position:relative; z-index:10;
 }
 #my-info-bar {
   display:flex; align-items:center; gap:12px;
@@ -606,22 +608,22 @@ body {
 #board-area {
   flex:1; display:flex;
   align-items:stretch; justify-content:stretch;
-  min-width:0; min-height:0;
+  min-width:0; min-height:0; overflow:visible;
 }
 #board-wrap {
   flex:1; display:flex;
-  min-width:0; min-height:0;
+  min-width:0; min-height:0; overflow:visible;
 }
 #board-container {
   flex:1; position:relative;
-  min-width:0; min-height:0;
+  min-width:0; min-height:0; overflow:visible;
 }
 #board {
   width:100%; height:100%;
   display:grid;
   grid-template-columns:repeat(10,1fr);
   grid-template-rows:repeat(10,1fr);
-  gap:2px;
+  gap:2px; overflow:visible;
 }
 #seq-lines {
   position:absolute; pointer-events:none; z-index:20;
@@ -689,8 +691,8 @@ body {
 }
 .cell.valid:hover {
   background:linear-gradient(145deg,#ffe9a0,#ffd060);
-  border-color:#ffe060; transform:scale(1.1); z-index:4;
-  box-shadow:0 0 16px rgba(251,191,36,.75);
+  border-color:#ffe060; transform:scale(1.06); z-index:4;
+  box-shadow:0 0 20px rgba(251,191,36,.9), 0 0 40px rgba(251,191,36,.4);
 }
 .cell.valid:hover .cell-tl,
 .cell.valid:hover .cell-br,
@@ -702,20 +704,20 @@ body {
 }
 .cell.valid-remove:hover {
   background:linear-gradient(145deg,#fecaca,#ef4444);
-  transform:scale(1.08); z-index:4;
-  box-shadow:0 0 16px rgba(239,68,68,.65);
+  transform:scale(1.06); z-index:4;
+  box-shadow:0 0 20px rgba(239,68,68,.85), 0 0 40px rgba(239,68,68,.4);
 }
 .cell.valid-remove:hover .cell-tl,
 .cell.valid-remove:hover .cell-br,
 .cell.valid-remove:hover .cell-mid { color:#fff; }
 
 @keyframes cellGlow {
-  from { box-shadow:0 0 5px rgba(251,191,36,.5); }
-  to   { box-shadow:0 0 16px rgba(251,191,36,1), 0 0 32px rgba(251,191,36,.3); }
+  from { box-shadow:0 0 6px rgba(251,191,36,.6), 0 0 0px rgba(251,191,36,.0); }
+  to   { box-shadow:0 0 18px rgba(251,191,36,1), 0 0 36px rgba(251,191,36,.5); }
 }
 @keyframes removeGlow {
-  from { box-shadow:0 0 5px rgba(239,68,68,.5); }
-  to   { box-shadow:0 0 16px rgba(239,68,68,1); }
+  from { box-shadow:0 0 6px rgba(239,68,68,.6); }
+  to   { box-shadow:0 0 18px rgba(239,68,68,1), 0 0 36px rgba(239,68,68,.5); }
 }
 
 /* ══ CHIPS ══════════════════════════════════════════════════════════════════ */
