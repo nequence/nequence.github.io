@@ -380,38 +380,73 @@ function renderLobby(room) {
   document.getElementById('team-setup').classList.toggle('hidden', !isHost);
   document.getElementById('team-view').classList.toggle('hidden', isHost);
 
-  // Circle seating
-  const table = document.getElementById('lobby-table');
-  table.querySelectorAll('.lobby-seat').forEach(s => s.remove());
+  // Player count
   const n = players.length;
-  const cx = 140, cy = 90, rx = 108, ry = 72;
-  players.forEach(([id, p], i) => {
-    const angle  = (2 * Math.PI * i / n) - Math.PI / 2;
-    const x      = cx + rx * Math.cos(angle);
-    const y      = cy + ry * Math.sin(angle);
-    const ti     = assignments[id] ?? 0;
-    const color  = TEAM_COLORS[ti] || TEAM_COLORS[0];
-    const seat   = document.createElement('div');
-    seat.className = 'lobby-seat' + (id === myId ? ' lobby-seat-me' : '');
-    seat.style.left = x + 'px';
-    seat.style.top  = y + 'px';
-    seat.style.borderColor = color;
-    seat.innerHTML =
-      `<div class="lobby-seat-avatar">${p.avatar || '🃏'}</div>` +
-      `<div class="lobby-seat-name" style="color:${color}">` +
-        p.name + (id === myId ? ' (you)' : '') + (id === room.hostId ? ' 👑' : '') +
-      `</div>` +
-      `<div class="lobby-seat-team" style="color:${color}">${TEAM_LABELS[ti]}</div>`;
-    table.appendChild(seat);
-  });
+  const countEl = document.getElementById('lobby-player-count');
+  if (countEl) countEl.textContent = `${n} player${n !== 1 ? 's' : ''} joined`;
+  const guestCountEl = document.getElementById('lobby-player-count-guest');
+  if (guestCountEl) guestCountEl.textContent = `${n} player${n !== 1 ? 's' : ''} in the room`;
 
-  // Host: team columns
+  // Team count button states (host)
   if (isHost) {
     document.querySelectorAll('.team-count-opt').forEach(btn => {
       btn.classList.toggle('active', parseInt(btn.dataset.count) === tc);
     });
-    renderTeamColumns(room);
   }
+
+  // Render player tiles (Kahoot-style grid)
+  const grid = document.getElementById('player-grid');
+  grid.innerHTML = '';
+  players.forEach(([id, p], i) => {
+    const ti    = assignments[id] ?? 0;
+    const color = TEAM_COLORS[ti] || TEAM_COLORS[0];
+
+    const tile = document.createElement('div');
+    tile.className = 'player-tile' + (id === myId ? ' player-tile-me' : '');
+    tile.style.borderColor = color;
+    tile.style.boxShadow   = `0 0 22px ${color}50, inset 0 1px 0 rgba(255,255,255,.08)`;
+    tile.style.animationDelay = (i * 0.06) + 's';
+
+    // Kick button (host only, not for self)
+    let kickHTML = '';
+    if (isHost && id !== myId) {
+      kickHTML = `<button class="tile-kick-btn" title="Kick player">✕</button>`;
+    }
+
+    // Team reassign dots (host only)
+    let dotsHTML = '';
+    if (isHost) {
+      dotsHTML = '<div class="tile-team-dots">';
+      for (let t = 0; t < tc; t++) {
+        dotsHTML +=
+          `<div class="tile-team-dot${t === ti ? ' active' : ''}"` +
+          ` style="background:${TEAM_COLORS[t]}"` +
+          ` data-team="${t}" data-pid="${id}"` +
+          ` title="Move to Team ${TEAM_LABELS[t]}"></div>`;
+      }
+      dotsHTML += '</div>';
+    }
+
+    tile.innerHTML =
+      kickHTML +
+      `<div class="tile-avatar">${p.avatar || '🃏'}</div>` +
+      `<div class="tile-name">${p.name}${id === room.hostId ? ' 👑' : ''}</div>` +
+      `<div class="tile-team-badge" style="color:${color};border-color:${color}60;background:${color}18">` +
+        TEAM_LABELS[ti] +
+      `</div>` +
+      dotsHTML;
+
+    // Wire kick
+    const kb = tile.querySelector('.tile-kick-btn');
+    if (kb) kb.addEventListener('click', e => { e.stopPropagation(); kickPlayer(id); });
+
+    // Wire team dots
+    tile.querySelectorAll('.tile-team-dot').forEach(dot => {
+      dot.addEventListener('click', () => moveToTeam(dot.dataset.pid, parseInt(dot.dataset.team)));
+    });
+
+    grid.appendChild(tile);
+  });
 
   // Non-host: team join buttons
   if (!isHost) {
@@ -423,6 +458,7 @@ function renderLobby(room) {
       const btn         = document.createElement('button');
       btn.className = 'team-join-opt' + (amOnTeam ? ' active' : '');
       btn.style.setProperty('--tc', TEAM_COLORS[t]);
+      if (amOnTeam) btn.style.borderColor = TEAM_COLORS[t];
       btn.innerHTML =
         `<span class="tjb-dot" style="background:${TEAM_COLORS[t]}"></span>` +
         `<span class="tjb-label">Team ${TEAM_LABELS[t]}</span>` +
@@ -433,42 +469,13 @@ function renderLobby(room) {
   }
 }
 
-function renderTeamColumns(room) {
-  const tc          = room.teamCount || 2;
-  const assignments = room.teamAssignments || {};
-  const players     = Object.entries(room.players || {})
-    .sort(([, a], [, b]) => a.joinOrder - b.joinOrder);
-  const cols = document.getElementById('team-columns');
-  cols.innerHTML = '';
-
-  for (let t = 0; t < tc; t++) {
-    const col = document.createElement('div');
-    col.className = 'team-col';
-    col.style.borderColor = TEAM_COLORS[t];
-    col.innerHTML = `<div class="team-col-header" style="color:${TEAM_COLORS[t]}">Team ${TEAM_LABELS[t]}</div>`;
-
-    const members = players.filter(([id]) => (assignments[id] ?? 0) === t);
-    members.forEach(([id, p]) => {
-      const row = document.createElement('div');
-      row.className = 'team-member-row' + (id === myId ? ' team-member-me' : '');
-      row.innerHTML = `<span class="tmr-av">${p.avatar || '🃏'}</span><span class="tmr-name">${p.name}</span>`;
-
-      // Move-to-team selector
-      const sel = document.createElement('select');
-      sel.className = 'team-move-sel';
-      for (let i = 0; i < tc; i++) {
-        const opt = document.createElement('option');
-        opt.value = i; opt.textContent = TEAM_LABELS[i];
-        if (i === t) opt.selected = true;
-        sel.appendChild(opt);
-      }
-      sel.addEventListener('change', () => moveToTeam(id, parseInt(sel.value)));
-      row.appendChild(sel);
-      col.appendChild(row);
-    });
-
-    cols.appendChild(col);
-  }
+async function kickPlayer(pid) {
+  const snap = await roomRef.get();
+  if (snap.val()?.hostId !== myId) return;
+  const updates = {};
+  updates[`players/${pid}`] = null;
+  updates[`teamAssignments/${pid}`] = null;
+  await roomRef.update(updates);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

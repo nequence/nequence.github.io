@@ -54,34 +54,52 @@
 
 <!-- ═══════════════════ LOBBY ═══════════════════ -->
 <div id="lobby-screen" class="hidden">
-  <div id="lobby-box">
-    <div class="game-logo">♠ SEQUENCE ♠</div>
-    <div class="room-code-row">
-      <span class="room-code-label">Room</span>
-      <span id="room-code-display" class="room-code-val">------</span>
-      <button id="copy-link-btn" class="btn-sm">⎘ Copy Link</button>
+
+  <!-- Top bar -->
+  <div id="lobby-topbar">
+    <div class="lobby-brand">♠ Sequence</div>
+    <div id="lobby-code-center">
+      <div class="lc-label">Room Code</div>
+      <div class="lc-row">
+        <span id="room-code-display" class="room-code-val">------</span>
+        <button id="copy-link-btn" class="btn-sm">⎘ Copy</button>
+      </div>
     </div>
-    <div id="lobby-table-wrap">
-      <div id="lobby-table"><div id="lobby-table-label">SEQUENCE</div></div>
-    </div>
+    <button id="leave-lobby-btn" class="btn-danger-sm">Leave</button>
+  </div>
+
+  <!-- Main -->
+  <div id="lobby-main">
+
+    <!-- Host controls -->
     <div id="team-setup" class="hidden">
-      <div class="team-setup-header">
-        <span class="section-label">Teams</span>
+      <div class="lobby-ctrl-row">
+        <span class="lc-section">Teams</span>
         <div id="team-count-btns" class="team-count-btns">
           <button class="team-count-opt active" data-count="2">2</button>
           <button class="team-count-opt" data-count="3">3</button>
           <button class="team-count-opt" data-count="4">4</button>
         </div>
+        <span class="lc-section" id="lobby-player-count">0 players</span>
       </div>
-      <div id="team-columns" class="team-columns"></div>
     </div>
+
+    <!-- Non-host player count -->
+    <div id="lobby-player-count-guest" class="lobby-pcount-guest"></div>
+
+    <!-- Player tiles -->
+    <div id="player-grid" class="player-grid"></div>
+
+    <!-- Non-host team picker -->
     <div id="team-view" class="hidden">
-      <div class="section-label">Pick Your Team</div>
+      <div class="lc-section" style="margin-bottom:10px;text-align:center">Choose Your Team</div>
       <div id="team-join-btns" class="team-join-btns"></div>
     </div>
+
+    <!-- Actions -->
     <div id="lobby-waiting-msg" class="lobby-wait">Waiting for the host to start…</div>
     <button id="start-game-btn" class="pcount-btn hidden">▶ Start Game</button>
-    <button id="leave-lobby-btn" class="btn-danger-sm">Leave Room</button>
+
   </div>
 </div>
 
