@@ -1000,6 +1000,7 @@ function showView(id) {
     const el = document.getElementById(v);
     if (el) el.classList.toggle('hidden', v !== id);
   });
+  document.body.classList.toggle('in-game', id === 'game-screen');
 }
 
 function showError(msg) {
