@@ -11,31 +11,43 @@
 <!-- ═══════════════════ LANDING ═══════════════════ -->
 <div id="landing-screen">
   <div id="landing-box">
-    <div class="game-logo">♠ SEQUENCE ♠</div>
-    <div class="game-subtitle">Online Multiplayer</div>
+    <div class="game-logo">
+      <div class="game-logo-suit">♠</div>
+      <div class="game-logo-text">SEQUENCE</div>
+      <div class="game-subtitle">Online Multiplayer</div>
+    </div>
+
     <div id="invite-header" class="hidden">
       <div class="invite-tag">You're invited to room</div>
       <div id="invite-code-badge" class="invite-code-badge"></div>
     </div>
-    <input type="text" id="name-input" class="txt-input" placeholder="Your name…" maxlength="20" autocomplete="off"/>
-    <div class="avatar-row-label">Pick your avatar</div>
-    <div id="avatar-picker" class="avatar-picker"></div>
+
+    <div class="field-wrap">
+      <div class="field-label">Your name</div>
+      <input type="text" id="name-input" class="txt-input" placeholder="Enter your name…" maxlength="20" autocomplete="off"/>
+    </div>
+
+    <div class="field-wrap" style="align-items:center">
+      <div class="avatar-row-label">Pick your avatar</div>
+      <div id="avatar-picker" class="avatar-picker"></div>
+    </div>
+
     <div id="normal-landing">
-      <button id="create-btn" class="pcount-btn">Create Room</button>
-      <div class="landing-divider">— or join a room —</div>
+      <button id="create-btn" class="pcount-btn">✦ Create Room</button>
+      <div class="landing-divider">or join a room</div>
       <div class="join-row">
         <input type="text" id="code-input" class="txt-input code-inp" placeholder="ROOM CODE" maxlength="6" autocomplete="off"/>
-        <button id="join-btn" class="pcount-btn">Join</button>
+        <button id="join-btn" class="pcount-btn">Join →</button>
       </div>
     </div>
+
     <button id="invite-join-btn" class="pcount-btn hidden">Join Room →</button>
     <div id="landing-error" class="error-msg"></div>
+
     <div id="setup-rules">
-      <span>First to <strong>2 sequences</strong> wins</span>
-      <span class="dot">·</span>
-      <span>♥♦ J = Wild</span>
-      <span class="dot">·</span>
-      <span>♣♠ J = Remove</span>
+      <span class="rule-pill">First to 2 sequences wins</span>
+      <span class="rule-pill wild">♥♦ J = Wild</span>
+      <span class="rule-pill remove">♣♠ J = Remove</span>
     </div>
   </div>
 </div>
