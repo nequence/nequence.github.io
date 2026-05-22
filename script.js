@@ -149,16 +149,16 @@ function parseAvatar(str) {
   return { c: c||0, f: f||0, h: h||0, a: a||0 };
 }
 
-function renderAvatar(str, size = 'md') {
+function renderAvatar(str, sz = '44px') {
   const { c, f, h, a } = parseAvatar(str);
   const [c1,c2] = AV_COLORS[c] || AV_COLORS[0];
   const face = AV_FACES[f] || AV_FACES[0];
   const hat  = AV_HATS[h]  || '';
   const acc  = AV_ACCS[a]  || '';
-  return `<div class="av-frame av-${size}" style="background:radial-gradient(circle at 38% 32%,${c1},${c2})">` +
-    (hat ? `<span class="av-hat-el">${hat}</span>` : '') +
-    `<span class="av-face-el">${face}</span>` +
-    (acc ? `<span class="av-acc-el">${acc}</span>` : '') +
+  return `<div class="av" style="--sz:${sz};background:radial-gradient(circle at 38% 32%,${c1},${c2})">` +
+    (hat ? `<span class="av-hat">${hat}</span>` : '') +
+    `<span class="av-face">${face}</span>` +
+    (acc ? `<span class="av-extra">${acc}</span>` : '') +
     `</div>`;
 }
 
@@ -171,12 +171,12 @@ function buildAvatarPicker() {
   // Preview
   const previewWrap = document.createElement('div');
   previewWrap.className = 'av-preview-wrap';
-  previewWrap.innerHTML = renderAvatar(myAvatar, 'lg');
+  previewWrap.innerHTML = renderAvatar(myAvatar, '100px');
   picker.appendChild(previewWrap);
 
   function refresh() {
     myAvatar = `${sel.c}|${sel.f}|${sel.h}|${sel.a}`;
-    previewWrap.innerHTML = renderAvatar(myAvatar, 'lg');
+    previewWrap.innerHTML = renderAvatar(myAvatar, '100px');
     picker.querySelectorAll('.av-opt').forEach(btn => {
       const { cat, idx } = btn.dataset;
       btn.classList.toggle('selected', sel[cat] === Number(idx));
@@ -301,9 +301,13 @@ async function startGame() {
   const playerIds = Object.keys(room.players || {});
   if (playerIds.length < 2) return showError('Need at least 2 players');
 
-  const tc          = room.teamCount || 2;
+  const tc = room.teamCount || 2;
+
+  // Use the stored assignments (set round-robin on join, host can override via dots)
   const assignments = room.teamAssignments || {};
-  const teamCounts  = Array.from({ length: tc }, (_, i) =>
+
+  // Validate at least 1 per team
+  const teamCounts = Array.from({ length: tc }, (_, i) =>
     playerIds.filter(id => (assignments[id] ?? 0) === i).length
   );
   if (teamCounts.some(c => c === 0)) return showError('Each team needs at least 1 player');
@@ -443,7 +447,9 @@ function renderLobby(room) {
   document.getElementById('start-game-btn').classList.toggle('hidden', !isHost);
   document.getElementById('lobby-waiting-msg').classList.toggle('hidden', isHost);
   document.getElementById('team-setup').classList.toggle('hidden', !isHost);
-  document.getElementById('team-view').classList.toggle('hidden', isHost);
+  // Team view removed — guests can't self-select teams; host assigns via dots
+  const tv = document.getElementById('team-view');
+  if (tv) tv.classList.add('hidden');
 
   // Player count
   const n = players.length;
@@ -490,13 +496,14 @@ function renderLobby(room) {
       }
       dotsHTML += '</div>';
     }
+    const teamBadge = isHost
+      ? `<div class="tile-team-badge" style="color:${color};border-color:${color}55;background:${color}15">${TEAM_LABELS[ti]}</div>`
+      : '';
     tile.innerHTML =
       kickHTML +
-      `<div class="tile-avatar-wrap">${renderAvatar(p.avatar, 'sm')}</div>` +
+      `<div class="tile-avatar-wrap">${renderAvatar(p.avatar, '44px')}</div>` +
       `<div class="tile-name">${p.name}${id === room.hostId ? ' <span class="tile-host-badge">👑</span>' : ''}</div>` +
-      `<div class="tile-team-badge" style="color:${color};border-color:${color}55;background:${color}15">` +
-        TEAM_LABELS[ti] +
-      `</div>` +
+      teamBadge +
       dotsHTML;
 
     // Wire kick
@@ -666,7 +673,7 @@ const Renderer = {
     const myBar = document.getElementById('my-info-bar');
     if (myBar && me) {
       myBar.innerHTML =
-        `<div class="my-bar-avatar">${renderAvatar(me.avatar, 'md')}</div>` +
+        `<div class="my-bar-avatar">${renderAvatar(me.avatar, '56px')}</div>` +
         `<div>` +
           `<div class="my-bar-name" style="color:${me.color}">${me.name} ✦</div>` +
           `<div class="my-bar-team" style="color:${me.color}">Team ${TEAM_LABELS[me.teamIdx ?? 0]}</div>` +
@@ -693,7 +700,7 @@ const Renderer = {
     el.className = 'pil';
     el.id = 'pil-' + player.id;
     el.innerHTML =
-      `<div class="pil-avatar">${renderAvatar(player.avatar, 'sm')}</div>` +
+      `<div class="pil-avatar">${renderAvatar(player.avatar, '40px')}</div>` +
       `<div class="pil-name">${player.name}</div>` +
       `<div class="pil-team" style="color:${player.color}">Team ${TEAM_LABELS[player.teamIdx ?? 0]}</div>`;
     return el;
@@ -719,14 +726,26 @@ const Renderer = {
           cell.classList.add('corner');
           cell.innerHTML = '<span class="free-star">★</span><span class="free-label">FREE</span>';
         } else {
-          const red = isRed(code);
-          const rc  = red ? ' red' : '';
-          const rk  = cardRank(code);
-          const sym = symOf(code);
-          cell.innerHTML =
+          const red  = isRed(code);
+          const rc   = red ? ' red' : '';
+          const rk   = cardRank(code);
+          const sym  = symOf(code);
+          const corners =
             `<span class="cell-tl${rc}">${rk}<span class="cell-ts">${sym}</span></span>` +
-            `<span class="cell-mid${rc}">${sym}</span>` +
             `<span class="cell-br${rc}">${rk}<span class="cell-ts">${sym}</span></span>`;
+          if (rk === 'Q' || rk === 'K') {
+            cell.innerHTML = corners +
+              `<div class="cell-face-body${rc}">` +
+                `<span class="cell-face-letter${rc}">${rk}</span>` +
+                `<span class="cell-face-sym${rc}">${sym}</span>` +
+              `</div>`;
+          } else if (rk === 'A') {
+            cell.innerHTML = corners +
+              `<span class="cell-mid${rc}" style="font-size:clamp(16px,2.6vmin,36px)">${sym}</span>`;
+          } else {
+            cell.innerHTML = corners +
+              `<span class="cell-mid${rc}">${sym}</span>`;
+          }
         }
 
         const owner = BM.owner(r, c);
@@ -828,7 +847,7 @@ const Renderer = {
       block.innerHTML =
         `<span class="score-dot" style="background:${color}"></span>` +
         `<span class="score-label" style="color:${color}">Team ${TEAM_LABELS[t]}</span>` +
-        `<span class="score-avs">${members.map(p => renderAvatar(p.avatar, 'sm')).join('')}</span>` +
+        `<span class="score-avs">${members.map(p => renderAvatar(p.avatar, '32px')).join('')}</span>` +
         `<div class="score-pips" id="pips-team-${t}">` +
           Array.from({ length: WIN_SEQS }, () =>
             `<span class="pip" style="color:${color}"></span>`).join('') +
