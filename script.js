@@ -18,27 +18,26 @@ let roomOff  = null;
 
 const urlCode = (location.hash.slice(1) || '').toUpperCase().trim();
 
-/* ── Avatar system ───────────────────────────────────────────────────────── */
+/* ── Avatar constants ────────────────────────────────────────────────────── */
 const AV_COLORS = [
-  ['#1a1a2e','#16213e'],  // Dark navy
-  ['#1a0a2e','#2d1b69'],  // Deep purple
-  ['#0a1a0a','#1a3a1a'],  // Dark forest
-  ['#2e0a0a','#5a1a1a'],  // Dark crimson
-  ['#0a1a2e','#1a3a5a'],  // Dark ocean
-  ['#2e2a0a','#5a4a1a'],  // Dark gold
-  ['#1a1a1a','#2a2a2a'],  // Charcoal
-  ['#1a0a1a','#3a1a3a'],  // Dark plum
+  ['#1a1a2e','#16213e'],
+  ['#1a0a2e','#2d1b69'],
+  ['#0a1a0a','#1a3a1a'],
+  ['#2e0a0a','#5a1a1a'],
+  ['#0a1a2e','#1a3a5a'],
+  ['#2e2a0a','#5a4a1a'],
+  ['#1a1a1a','#2a2a2a'],
+  ['#1a0a1a','#3a1a3a'],
 ];
 const AV_FACES = ['🦊','🐺','🐸','🐱','🦁','🐧','🐮','🐻'];
 const AV_HATS  = ['','👑','🎩','🧢','🪖','🎭'];
 const AV_ACCS  = ['','👓','✨','🎀'];
 
+/* ── Game constants ──────────────────────────────────────────────────────── */
 const TEAM_COLORS = ['#c0392b','#1a5cb5','#1e8449','#c89010'];
 const TEAM_CLS    = ['team-0','team-1','team-2','team-3'];
 const TEAM_LABELS = ['Red','Blue','Green','Gold'];
 
-// Board layout: rows top→bottom, columns left→right
-// Verified from physical board (col 1–10 given by user, transposed to rows)
 const BOARD_LAYOUT = [
   [null, 'AC', 'KC', 'QC', '10C', '9C',  '8C', '7C', '6C', null],
   ['AD', '7S', '8S', '9S', '10S', 'QC',  'KC', 'AC', '5C', '2C'],
@@ -105,9 +104,9 @@ function buildCardFaceHTML(code) {
 }
 
 /* ── Team helpers ────────────────────────────────────────────────────────── */
-const getTeamIdx   = pid => G.teamAssignments[pid] ?? 0;
-const teamColor    = pid => TEAM_COLORS[getTeamIdx(pid)] || TEAM_COLORS[0];
-const teamChipCls  = pid => TEAM_CLS[getTeamIdx(pid)] || 'team-0';
+const getTeamIdx  = pid => G.teamAssignments[pid] ?? 0;
+const teamColor   = pid => TEAM_COLORS[getTeamIdx(pid)] || TEAM_COLORS[0];
+const teamChipCls = pid => TEAM_CLS[getTeamIdx(pid)] || 'team-0';
 
 /* ── Misc ────────────────────────────────────────────────────────────────── */
 function handSize(n) { return n <= 2 ? 7 : n <= 6 ? 6 : 5; }
@@ -127,11 +126,11 @@ const G = {
   boardState:      {},
   seqCells:        new Set(),
   seqLines:        [],
-  scores:          {},      // team scores: { 0: n, 1: n, ... }
-  teamAssignments: {},      // { playerId: teamIdx }
+  scores:          {},
+  teamAssignments: {},
   teamCount:       2,
   currentIdx:      0,
-  winner:          null,   // winning team index or null
+  winner:          null,
   selectedCard:    null,
   selIdx:          null,
   animating:       false,
@@ -140,7 +139,7 @@ const G = {
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
-   AVATAR HELPERS
+   AVATAR  —  --sz variable system
    ══════════════════════════════════════════════════════════════════════════ */
 
 function parseAvatar(str) {
@@ -165,10 +164,8 @@ function renderAvatar(str, sz = '44px') {
 function buildAvatarPicker() {
   const picker = document.getElementById('avatar-picker');
   picker.innerHTML = '';
-
   let sel = parseAvatar(myAvatar);
 
-  // Preview
   const previewWrap = document.createElement('div');
   previewWrap.className = 'av-preview-wrap';
   previewWrap.innerHTML = renderAvatar(myAvatar, '100px');
@@ -262,7 +259,7 @@ async function joinRoom(code) {
   myCode  = code;
   roomRef = db.ref('rooms/' + code);
 
-  // Auto-assign to smallest team
+  // Assign to smallest team for balance
   const assignments = room.teamAssignments || {};
   const tc = room.teamCount || 2;
   const teamCounts = Array.from({ length: tc }, (_, i) =>
@@ -303,10 +300,10 @@ async function startGame() {
 
   const tc = room.teamCount || 2;
 
-  // Use the stored assignments (set round-robin on join, host can override via dots)
+  // Use stored assignments (set round-robin on join, host can override via dots)
   const assignments = room.teamAssignments || {};
 
-  // Validate at least 1 per team
+  // Validate at least 1 player per team
   const teamCounts = Array.from({ length: tc }, (_, i) =>
     playerIds.filter(id => (assignments[id] ?? 0) === i).length
   );
@@ -376,7 +373,7 @@ function applyRoomState(room) {
     return {
       id,
       name:      (room.players[id] || {}).name   || id,
-      avatar:    (room.players[id] || {}).avatar  || '🃏',
+      avatar:    (room.players[id] || {}).avatar  || '0|0|0|0',
       teamIdx:   ti,
       color:     TEAM_COLORS[ti] || TEAM_COLORS[0],
       chipClass: TEAM_CLS[ti]    || 'team-0',
@@ -395,7 +392,6 @@ function applyRoomState(room) {
 
   showView('game-screen');
 
-  // Update room badge in header
   const badge = document.getElementById('room-badge-header');
   if (badge) badge.textContent = 'ROOM: ' + myCode;
 
@@ -447,25 +443,21 @@ function renderLobby(room) {
   document.getElementById('start-game-btn').classList.toggle('hidden', !isHost);
   document.getElementById('lobby-waiting-msg').classList.toggle('hidden', isHost);
   document.getElementById('team-setup').classList.toggle('hidden', !isHost);
-  // Team view removed — guests can't self-select teams; host assigns via dots
   const tv = document.getElementById('team-view');
   if (tv) tv.classList.add('hidden');
 
-  // Player count
   const n = players.length;
   const countEl = document.getElementById('lobby-player-count');
   if (countEl) countEl.textContent = `${n} player${n !== 1 ? 's' : ''} joined`;
   const guestCountEl = document.getElementById('lobby-player-count-guest');
   if (guestCountEl) guestCountEl.textContent = `${n} player${n !== 1 ? 's' : ''} in the room`;
 
-  // Team count button states (host)
   if (isHost) {
     document.querySelectorAll('.team-count-opt').forEach(btn => {
       btn.classList.toggle('active', parseInt(btn.dataset.count) === tc);
     });
   }
 
-  // Render player tiles (Kahoot-style grid)
   const grid = document.getElementById('player-grid');
   grid.innerHTML = '';
   players.forEach(([id, p], i) => {
@@ -477,13 +469,11 @@ function renderLobby(room) {
     tile.style.animationDelay = (i * 0.06) + 's';
     tile.style.setProperty('--tile-color', color);
 
-    // Kick button (host only, not for self)
     let kickHTML = '';
     if (isHost && id !== myId) {
       kickHTML = `<button class="tile-kick-btn" title="Kick player">✕</button>`;
     }
 
-    // Team reassign dots (host only)
     let dotsHTML = '';
     if (isHost) {
       dotsHTML = '<div class="tile-team-dots">';
@@ -492,13 +482,15 @@ function renderLobby(room) {
           `<div class="tile-team-dot${t === ti ? ' active' : ''}"` +
           ` style="background:${TEAM_COLORS[t]}"` +
           ` data-team="${t}" data-pid="${id}"` +
-          ` title="Move to Team ${TEAM_LABELS[t]}"></div>`;
+          ` title="Move to ${TEAM_LABELS[t]}"></div>`;
       }
       dotsHTML += '</div>';
     }
+
     const teamBadge = isHost
-      ? `<div class="tile-team-badge" style="color:${color};border-color:${color}55;background:${color}15">${TEAM_LABELS[ti]}</div>`
+      ? `<div class="tile-team-badge" style="color:${color};border-color:${color}55;background:${color}18">${TEAM_LABELS[ti]}</div>`
       : '';
+
     tile.innerHTML =
       kickHTML +
       `<div class="tile-avatar-wrap">${renderAvatar(p.avatar, '44px')}</div>` +
@@ -506,19 +498,15 @@ function renderLobby(room) {
       teamBadge +
       dotsHTML;
 
-    // Wire kick
     const kb = tile.querySelector('.tile-kick-btn');
     if (kb) kb.addEventListener('click', e => { e.stopPropagation(); kickPlayer(id); });
-
-    // Wire team dots
     tile.querySelectorAll('.tile-team-dot').forEach(dot => {
       dot.addEventListener('click', () => moveToTeam(dot.dataset.pid, parseInt(dot.dataset.team)));
     });
-
     grid.appendChild(tile);
   });
 
-  // Non-host: team join buttons
+  // Non-host team join buttons
   if (!isHost) {
     const joinArea = document.getElementById('team-join-btns');
     joinArea.innerHTML = '';
@@ -527,7 +515,6 @@ function renderLobby(room) {
       const amOnTeam    = (assignments[myId] ?? 0) === t;
       const btn         = document.createElement('button');
       btn.className = 'team-join-opt' + (amOnTeam ? ' active' : '');
-      btn.style.setProperty('--tc', TEAM_COLORS[t]);
       if (amOnTeam) btn.style.borderColor = TEAM_COLORS[t];
       btn.innerHTML =
         `<span class="tjb-dot" style="background:${TEAM_COLORS[t]}"></span>` +
@@ -583,7 +570,7 @@ const BM = {
 };
 
 /* ══════════════════════════════════════════════════════════════════════════
-   RULE ENGINE  (team-aware)
+   RULE ENGINE
    ══════════════════════════════════════════════════════════════════════════ */
 
 const RE = {
@@ -743,8 +730,7 @@ const Renderer = {
             cell.innerHTML = corners +
               `<span class="cell-mid${rc}" style="font-size:clamp(16px,2.6vmin,36px)">${sym}</span>`;
           } else {
-            cell.innerHTML = corners +
-              `<span class="cell-mid${rc}">${sym}</span>`;
+            cell.innerHTML = corners + `<span class="cell-mid${rc}">${sym}</span>`;
           }
         }
 
@@ -764,25 +750,21 @@ const Renderer = {
   renderHands() {
     const cur = G.cur;
 
-    // Active player glow on PILs and my-info-bar
     document.querySelectorAll('.pil').forEach(el => {
       el.classList.toggle('active-pil', el.id === 'pil-' + cur.id);
     });
     const myBar = document.getElementById('my-info-bar');
     if (myBar) myBar.classList.toggle('active-pil', cur.id === myId);
 
-    // Fill edge slots for opponents
     G.players.forEach(p => {
       if (p.id === myId) return;
       const slot = document.getElementById('edge-slot-' + p.id);
       if (slot) this._fillEdgeSlot(slot, p);
     });
 
-    // My interactive hand
     const me = G.players.find(p => p.id === myId);
     if (me) this._fillHandEl(document.getElementById('active-hand'), me);
 
-    // Turn banner
     const banner = document.getElementById('turn-banner');
     banner.classList.remove('banner-pop');
     void banner.offsetWidth;
@@ -989,9 +971,9 @@ const GF = {
     G.animating = true;
     document.body.classList.add('locked');
 
-    const player     = G.cur;
-    const cardIdx    = G.selIdx;
-    const myTeam     = G.teamAssignments[player.id] ?? 0;
+    const player      = G.cur;
+    const cardIdx     = G.selIdx;
+    const myTeam      = G.teamAssignments[player.id] ?? 0;
     const hadDeckCard = G.deck.length > 0;
 
     const newHand = G.hands[player.id].slice();
@@ -1058,7 +1040,7 @@ function animateCardDraw(playerId) {
   const deckEl = document.getElementById('deck-pile');
   if (!deckEl) return;
   const isMe  = playerId === myId;
-  let handEl  = isMe
+  const handEl = isMe
     ? document.getElementById('active-hand')
     : document.getElementById('edge-slot-' + playerId);
   if (!handEl || handEl.offsetParent === null) return;
@@ -1152,7 +1134,7 @@ document.querySelectorAll('.team-count-opt').forEach(btn => {
   btn.addEventListener('click', () => setTeamCount(parseInt(btn.dataset.count)));
 });
 
-/* ── Init ─────────────────────────────────────────────────────────────────── */
+/* ── Init ────────────────────────────────────────────────────────────────── */
 buildAvatarPicker();
 setupLanding();
 showView('landing-screen');
