@@ -107,6 +107,7 @@ onValue(gameRef, snap => {
   renderScores()
   renderTurnIndicator()
   renderLog()
+  renderHand()   // re-render hand on every turn change (shows face-up when it's your turn)
   checkWin()
 })
 

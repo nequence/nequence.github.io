@@ -150,7 +150,7 @@ function renderLobby() {
   // My avatar
   const me = players[uid]
   if (me) {
-    document.getElementById('my-avatar-wrap').innerHTML = renderAvatar(me.avatar || {}, 140, me.team)
+    document.getElementById('my-avatar-wrap').innerHTML = renderAvatar(me.avatar || {}, 160, me.team)
     document.getElementById('my-name').textContent = me.username || '(no name)'
   }
 
@@ -158,37 +158,45 @@ function renderLobby() {
   const grid = document.getElementById('team-grid')
   grid.style.gridTemplateColumns = `repeat(${tc}, 1fr)`
   grid.innerHTML = ''
+  const myCurrentTeam = players[uid]?.team
+
   for (const team of activeTeams) {
     const teamPlayers = Object.values(players).filter(p => p.team === team)
+    const isMyTeam = myCurrentTeam === team
     const col = document.createElement('div')
     col.className = 'team-col'
     col.innerHTML = `
       <div class="team-header">
         <div class="team-dot" style="background:${TEAM_COLORS[team]}"></div>
         <span class="team-name">${TEAM_NAMES[team]}</span>
-        <span style="font-size:12px;color:var(--text-muted);margin-left:auto">${teamPlayers.length} player${teamPlayers.length!==1?'s':''}</span>
+        <span style="font-size:12px;color:var(--text-muted);margin-left:auto">${teamPlayers.length}</span>
       </div>
       <div class="team-players">
         ${teamPlayers.map(p => `
-          <div class="player-card" data-uid="${p.uid}">
-            <div style="width:32px;height:43px;border-radius:6px;overflow:hidden;flex-shrink:0">
-              ${renderAvatar(p.avatar||{}, 32, p.team)}
+          <div class="player-card" style="${p.uid === uid ? 'background:rgba(255,255,255,0.07);' : ''}">
+            <div style="width:36px;height:48px;border-radius:7px;overflow:hidden;flex-shrink:0;background:rgba(255,255,255,0.03)">
+              ${renderAvatar(p.avatar||{}, 36, p.team)}
             </div>
-            <span class="pname">${p.username || '(unnamed)'}</span>
-            ${p.uid === meta.host ? '<span class="pbadge">HOST</span>' : ''}
-            ${p.uid === uid && p.team !== team ? '' : ''}
+            <div style="flex:1;min-width:0">
+              <div class="pname" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.username || '(unnamed)'}</div>
+              ${p.uid === meta.host ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">HOST</div>' : ''}
+            </div>
           </div>
         `).join('')}
-        ${isHost ? `<div style="padding:8px;text-align:center">
-          <button class="btn-ghost" style="font-size:12px;border:1px dashed var(--border-dim);border-radius:6px;padding:6px 12px;width:100%;color:var(--text-muted)"
-            data-join-team="${team}">Move to ${TEAM_NAMES[team]}</button>
-        </div>` : ''}
       </div>
+      ${!isMyTeam ? `
+        <div style="padding:8px;border-top:1px solid var(--border-dim);flex-shrink:0">
+          <button class="btn btn-secondary btn-full" style="font-size:12px;padding:7px;"
+            data-join-team="${team}">Join ${TEAM_NAMES[team]}</button>
+        </div>` : `
+        <div style="padding:8px;border-top:1px solid var(--border-dim);flex-shrink:0;text-align:center">
+          <span style="font-size:12px;color:${TEAM_COLORS[team]};font-weight:600">← You're here</span>
+        </div>`}
     `
     grid.appendChild(col)
   }
 
-  // Click on player card: move yourself to that team (if host or self)
+  // Click "Join" to switch teams
   grid.querySelectorAll('[data-join-team]').forEach(btn => {
     btn.addEventListener('click', () => moveToTeam(btn.dataset.joinTeam))
   })
