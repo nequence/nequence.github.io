@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no"/>
+  <title>Nequence — The Strategy Card Game</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+<div id="landing-page">
+  <div class="landing-card">
+
+    <!-- Logo -->
+    <div>
+      <div class="brand landing-logo-title">NEQUENCE</div>
+      <div class="landing-subtitle">The strategy card game, reimagined.</div>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-primary btn-full" id="create-btn" disabled>+ Create Room</button>
+
+      <div class="divider">
+        <hr/><span>or join one</span><hr/>
+      </div>
+
+      <div class="join-row">
+        <input class="input input-code" id="join-input" placeholder="ROOM CODE" maxlength="6"/>
+        <button class="btn btn-secondary" id="join-btn" disabled>Join</button>
+      </div>
+
+      <div id="join-error" style="color:#888;font-size:14px;text-align:center;display:none"></div>
+    </div>
+
+    <!-- How to play -->
+    <div style="text-align:center">
+      <button class="btn-ghost" id="howto-btn">How to Play</button>
+    </div>
+  </div>
+</div>
+
+<!-- How-to-play modal -->
+<div class="overlay" id="howto-overlay">
+  <div class="modal" style="max-width:480px">
+    <h2>How to Play</h2>
+    <ul class="howto-list">
+      <li>Players take turns placing chips on board squares by playing a matching card from their hand.</li>
+      <li>Form a sequence of 5 chips in a row — horizontal, vertical, or diagonal.</li>
+      <li>Two-eyed Jacks are wild: place a chip anywhere.</li>
+      <li>One-eyed Jacks are saboteurs: remove an opponent's chip.</li>
+      <li>Corner squares are free — they count for any team's sequence.</li>
+      <li>First team to complete the required number of sequences wins.</li>
+    </ul>
+    <div style="margin-top:24px">
+      <button class="btn btn-secondary btn-full" id="howto-close">Got it</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { db, ref, set, get, generateRoomCode, normalizeCode, getUid, go, toast } from './js/db.js'
+
+const uid = getUid()
+const createBtn = document.getElementById('create-btn')
+const joinBtn   = document.getElementById('join-btn')
+const joinInput = document.getElementById('join-input')
+const joinError = document.getElementById('join-error')
+
+// Enable buttons once uid is ready
+createBtn.disabled = false
+joinBtn.disabled = false
+
+// Normalize join input as user types
+joinInput.addEventListener('input', () => {
+  joinInput.value = normalizeCode(joinInput.value)
+  joinError.style.display = 'none'
+})
+joinInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleJoin() })
+
+createBtn.addEventListener('click', handleCreate)
+joinBtn.addEventListener('click', handleJoin)
+
+async function handleCreate() {
+  createBtn.disabled = true
+  createBtn.textContent = 'Creating…'
+  try {
+    const code = generateRoomCode()
+    await set(ref(db, `rooms/${code}/meta`), {
+      host: uid, status: 'lobby', createdAt: Date.now(),
+      expiresAt: Date.now() + 86400000,
+      settings: { teamCount: 2, turnTimerSeconds: 60, confirmPlacement: true },
+    })
+    await set(ref(db, `rooms/${code}/players/${uid}`), {
+      uid, username: '', isHost: true, team: 'aether',
+      joinedAt: Date.now(), connected: true,
+      avatar: { skin:0, outfit:0, hairStyle:0, hairColor:0, expression:0, accessory:0 },
+    })
+    go(`avatar.html?room=${code}`)
+  } catch(e) {
+    toast('Failed to create room')
+    createBtn.disabled = false
+    createBtn.textContent = '+ Create Room'
+  }
+}
+
+async function handleJoin() {
+  const code = normalizeCode(joinInput.value)
+  if (code.length < 6) { showError('Enter a 6-character room code'); shake(); return }
+  joinBtn.disabled = true
+  joinBtn.textContent = '…'
+  try {
+    const snap = await get(ref(db, `rooms/${code}/meta`))
+    if (!snap.exists()) { showError('Room not found'); shake(); return }
+    if (snap.val().status === 'finished') { showError('This game has already ended'); shake(); return }
+    // Don't create player record here — avatar.html handles it (fixes host bug)
+    go(`avatar.html?room=${code}`)
+  } catch(e) {
+    showError('Failed to join room'); shake()
+  } finally {
+    joinBtn.disabled = false
+    joinBtn.textContent = 'Join'
+  }
+}
+
+function showError(msg) {
+  joinError.textContent = msg
+  joinError.style.display = 'block'
+}
+
+function shake() {
+  joinInput.style.transition = 'transform .35s'
+  joinInput.style.transform = 'translateX(-5px)'
+  setTimeout(() => joinInput.style.transform = 'translateX(5px)', 70)
+  setTimeout(() => joinInput.style.transform = 'translateX(-4px)', 140)
+  setTimeout(() => joinInput.style.transform = 'translateX(4px)', 210)
+  setTimeout(() => joinInput.style.transform = 'translateX(0)', 280)
+}
+
+// How to play
+document.getElementById('howto-btn').addEventListener('click', () =>
+  document.getElementById('howto-overlay').classList.add('open'))
+document.getElementById('howto-close').addEventListener('click', () =>
+  document.getElementById('howto-overlay').classList.remove('open'))
+document.getElementById('howto-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open')
+})
+</script>
+</body>
+</html>

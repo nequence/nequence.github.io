@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no"/>
+  <title>Game — Nequence</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+<div id="game-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="brand" style="font-size:16px;letter-spacing:.08em">NEQUENCE</div>
+    <div style="font-size:13px;color:var(--text-muted);font-family:var(--font-mono)" id="room-code"></div>
+    <div id="active-player-info" style="display:flex;align-items:center;gap:8px;font-size:13px"></div>
+  </div>
+
+  <div class="game-body">
+
+    <!-- Score panel -->
+    <div class="score-panel" id="score-panel">
+      <div style="font-size:11px;letter-spacing:.08em;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:4px">SCORE</div>
+    </div>
+
+    <!-- Board + hand -->
+    <div class="board-area">
+      <div class="turn-indicator" id="turn-indicator">Loading…</div>
+      <div id="game-board"></div>
+      <div class="hand-area" id="hand-area"></div>
+    </div>
+
+    <!-- Game log -->
+    <div class="game-log">
+      <h3>GAME LOG</h3>
+      <div class="log-list" id="log-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm placement modal -->
+<div class="overlay" id="confirm-overlay">
+  <div class="modal">
+    <h2>Confirm Placement</h2>
+    <p>Place chip on <span class="highlight" id="confirm-cell-label"></span> using <span class="highlight" id="confirm-card-label"></span>?</p>
+    <div class="modal-btns">
+      <button class="btn btn-primary" id="confirm-yes">Place chip</button>
+      <button class="btn btn-secondary" id="confirm-no">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Win screen -->
+<div id="win-screen">
+  <div style="font-size:14px;letter-spacing:.12em;color:var(--text-muted);font-family:var(--font-mono)">WINNER</div>
+  <h1 id="win-team-name"></h1>
+  <p id="win-subtitle"></p>
+  <div style="display:flex;gap:12px;margin-top:8px">
+    <button class="btn btn-primary" id="win-lobby">Back to Lobby</button>
+    <button class="btn btn-secondary" id="win-home">Home</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { db, ref, get, update, onValue, getUid, go, toast } from './js/db.js'
+import { renderAvatar } from './js/avatar.js'
+import { BOARD_LAYOUT, FREE_CORNERS, cellsForCard } from './js/board.js'
+import { parseCard, isTwoEyedJack, isOneEyedJack, SUIT_SYMBOL, SUIT_COLOR } from './js/cards.js'
+import { detectNewSequences } from './js/sequence.js'
+
+const params   = new URLSearchParams(location.search)
+const roomCode = params.get('room')
+const uid      = getUid()
+
+if (!roomCode) go('index.html')
+document.getElementById('room-code').textContent = roomCode
+
+const TEAMS       = ['aether','nova','pulse','void']
+const TEAM_COLORS = { aether:'#7C3AED', nova:'#D97706', pulse:'#E11D48', void:'#0D9488' }
+const TEAM_NAMES  = { aether:'Aether', nova:'Nova', pulse:'Pulse', void:'Void' }
+
+let gameState = null, players = {}, teams = {}, myHand = [], myTeam = ''
+let selectedCard = null, pendingCell = null, playing = false
+let settings = {}, turnOrder = []
+
+// ── Firebase listeners ────────────────────────────────────────────────────────
+const roomRef = ref(db, `rooms/${roomCode}`)
+onValue(roomRef, snap => {
+  const data = snap.val()
+  if (!data) { go('index.html'); return }
+  players = data.players || {}
+  teams   = data.teams   || {}
+  const me = players[uid]
+  myTeam = me?.team || ''
+})
+
+const gameRef = ref(db, `rooms/${roomCode}/game`)
+onValue(gameRef, snap => {
+  gameState = snap.val()
+  if (!gameState) return
+  settings  = gameState.settings || {}
+  turnOrder = gameState.turnOrder || []
+  renderBoard()
+  renderScores()
+  renderTurnIndicator()
+  renderLog()
+  checkWin()
+})
+
+const handRef = ref(db, `rooms/${roomCode}/hands/${uid}`)
+onValue(handRef, snap => {
+  myHand = snap.val() || []
+  renderHand()
+})
+
+// ── Board rendering ───────────────────────────────────────────────────────────
+function renderBoard() {
+  const board = gameState?.board || {}
+  const boardEl = document.getElementById('game-board')
+
+  // Compute valid cells for selected card
+  let validCells = new Set()
+  if (selectedCard) {
+    if (isTwoEyedJack(selectedCard)) {
+      BOARD_LAYOUT.forEach(c => { if (!c.type && !board[c.id]) validCells.add(c.id) })
+    } else if (isOneEyedJack(selectedCard)) {
+      BOARD_LAYOUT.forEach(c => { if (!c.type && board[c.id] && board[c.id].team !== myTeam && !board[c.id].inSequence) validCells.add(c.id) })
+    } else {
+      cellsForCard(selectedCard).forEach(id => { if (!board[id]) validCells.add(id) })
+    }
+  }
+
+  boardEl.innerHTML = ''
+  for (const cell of BOARD_LAYOUT) {
+    const el = document.createElement('div')
+    el.className = 'board-cell'
+    el.dataset.id = cell.id
+
+    if (cell.type === 'free') {
+      el.classList.add('free')
+      el.innerHTML = '<span style="font-size:18px;opacity:.4">★</span>'
+    } else {
+      const { rank, suit } = parseCard(cell.card)
+      const color = SUIT_COLOR[suit]
+      el.classList.add(color)
+      el.innerHTML = `
+        <span class="card-rank">${rank}</span>
+        <span class="card-suit">${SUIT_SYMBOL[suit]}</span>
+        <span class="card-rank-bot">${rank}</span>
+      `
+    }
+
+    const chip = board[cell.id]
+    if (chip) {
+      const chipEl = document.createElement('div')
+      chipEl.className = 'chip' + (chip.inSequence ? ' in-sequence' : '')
+      chipEl.style.background = TEAM_COLORS[chip.team] || '#666'
+      el.appendChild(chipEl)
+      el.classList.add('occupied')
+    }
+
+    if (validCells.has(cell.id)) el.classList.add('valid-play')
+
+    if (cell.type !== 'free') {
+      el.addEventListener('click', () => onCellClick(cell.id, validCells.has(cell.id)))
+    }
+
+    boardEl.appendChild(el)
+  }
+}
+
+// ── Scores ────────────────────────────────────────────────────────────────────
+function renderScores() {
+  const panel = document.getElementById('score-panel')
+  const target = settings.sequencesToWin || 3
+  const tc = settings.teamCount || 2
+  const activeTeams = TEAMS.slice(0, tc)
+
+  let html = '<div style="font-size:11px;letter-spacing:.08em;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:4px">SCORE</div>'
+  for (const team of activeTeams) {
+    const data = teams[team] || {}
+    const seqs = data.sequencesCompleted || 0
+    const pips = Array.from({length: target}, (_,i) =>
+      `<div class="seq-pip ${i < seqs ? 'filled' : ''}" style="${i < seqs ? `--team-color:${TEAM_COLORS[team]}` : ''}"></div>`
+    ).join('')
+    const teamPlayers = Object.values(players).filter(p => p.team === team)
+    html += `
+      <div class="score-team">
+        <div class="score-team-name" style="color:${TEAM_COLORS[team]}">${TEAM_NAMES[team].toUpperCase()}</div>
+        <div class="score-seqs">${pips}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${teamPlayers.map(p=>p.username||'?').join(', ')}</div>
+      </div>
+    `
+  }
+  panel.innerHTML = html
+}
+
+// ── Turn indicator ────────────────────────────────────────────────────────────
+function renderTurnIndicator() {
+  const el = document.getElementById('turn-indicator')
+  const isMyTurn = gameState?.currentTurn === uid
+  el.textContent = isMyTurn ? '✦ Your turn — select a card then click a square'
+    : `${players[gameState?.currentTurn]?.username || '...'}'s turn`
+  el.classList.toggle('my-turn', isMyTurn)
+
+  // Active player in header
+  const info = document.getElementById('active-player-info')
+  const ap = players[gameState?.currentTurn]
+  if (ap) {
+    info.innerHTML = `
+      <div style="width:28px;height:37px;border-radius:5px;overflow:hidden">${renderAvatar(ap.avatar||{},28,ap.team)}</div>
+      <span style="font-weight:600">${ap.username||'?'}</span>
+      <span style="width:8px;height:8px;border-radius:50%;background:${TEAM_COLORS[ap.team]||'#666'};display:inline-block"></span>
+    `
+  }
+}
+
+// ── Hand ──────────────────────────────────────────────────────────────────────
+function renderHand() {
+  const isMyTurn = gameState?.currentTurn === uid
+  const handEl = document.getElementById('hand-area')
+  handEl.innerHTML = ''
+
+  if (!isMyTurn) {
+    // Show face-down cards
+    myHand.forEach(() => {
+      const d = document.createElement('div')
+      d.className = 'hand-facedown'
+      handEl.appendChild(d)
+    })
+    return
+  }
+
+  myHand.forEach(code => {
+    const { rank, suit } = parseCard(code)
+    const el = document.createElement('div')
+    el.className = 'hand-card ' + SUIT_COLOR[suit] + (code === selectedCard ? ' selected' : '')
+    el.dataset.card = code
+    el.innerHTML = `
+      <span class="card-rank">${rank}</span>
+      <span class="card-suit">${SUIT_SYMBOL[suit]}</span>
+      <span class="card-rank-bot">${rank}</span>
+    `
+    el.addEventListener('click', () => selectCard(code))
+    handEl.appendChild(el)
+  })
+}
+
+function selectCard(code) {
+  selectedCard = selectedCard === code ? null : code
+  renderHand()
+  renderBoard()
+}
+
+// ── Cell click ────────────────────────────────────────────────────────────────
+function onCellClick(cellId, isValid) {
+  if (gameState?.currentTurn !== uid) return
+  if (!selectedCard) { toast('Select a card from your hand first'); return }
+  if (!isValid) { toast('That card doesn\'t match this square'); return }
+
+  if (settings.confirmPlacement) {
+    pendingCell = cellId
+    document.getElementById('confirm-cell-label').textContent = cellId
+    document.getElementById('confirm-card-label').textContent = selectedCard
+    document.getElementById('confirm-overlay').classList.add('open')
+  } else {
+    executePlay(cellId)
+  }
+}
+
+document.getElementById('confirm-yes').addEventListener('click', () => {
+  document.getElementById('confirm-overlay').classList.remove('open')
+  if (pendingCell) executePlay(pendingCell)
+  pendingCell = null
+})
+document.getElementById('confirm-no').addEventListener('click', () => {
+  document.getElementById('confirm-overlay').classList.remove('open')
+  pendingCell = null
+})
+
+// ── Execute play ──────────────────────────────────────────────────────────────
+async function executePlay(cellId) {
+  if (playing) return
+  playing = true
+
+  try {
+    // Re-fetch latest game state to avoid race conditions
+    const snap = await get(ref(db, `rooms/${roomCode}/game`))
+    const game = snap.val()
+    if (!game) throw new Error('Game not found')
+    if (game.currentTurn !== uid) throw new Error('Not your turn')
+
+    const board    = game.board || {}
+    const cardCode = selectedCard
+    const oneEyed  = isOneEyedJack(cardCode)
+    const twoEyed  = isTwoEyedJack(cardCode)
+
+    // Validate
+    if (oneEyed) {
+      if (!board[cellId]?.team || board[cellId].team === myTeam || board[cellId].inSequence)
+        throw new Error('Invalid target for One-Eyed Jack')
+    } else if (twoEyed) {
+      if (board[cellId]?.team) throw new Error('Cell already occupied')
+    } else {
+      if (!cellsForCard(cardCode).includes(cellId)) throw new Error('Card does not match this cell')
+      if (board[cellId]?.team) throw new Error('Cell already occupied')
+    }
+
+    // Update hand
+    const handSnap = (await get(ref(db, `rooms/${roomCode}/hands/${uid}`))).val() || []
+    const cardIdx  = handSnap.indexOf(cardCode)
+    if (cardIdx === -1) throw new Error('Card not in hand')
+    const newHand = [...handSnap]
+    newHand.splice(cardIdx, 1)
+
+    // Draw replacement
+    const deckArr = game.deck || []
+    const newDeck = [...deckArr]
+    if (newDeck.length > 0) newHand.push(newDeck.shift())
+
+    // Update board
+    const newBoard = { ...board }
+    if (oneEyed) {
+      delete newBoard[cellId]
+    } else {
+      newBoard[cellId] = { team: myTeam, inSequence: false, sequenceIds: [] }
+    }
+
+    // Detect sequences
+    const teamNames = Object.keys(game.teams || {})
+    const existing  = game.sequences || []
+    const newSeqs   = oneEyed ? [] : detectNewSequences(newBoard, existing, teamNames)
+    for (const seq of newSeqs) {
+      for (const cid of seq.cells) {
+        if (newBoard[cid]) newBoard[cid] = { ...newBoard[cid], inSequence:true, sequenceIds:[seq.id] }
+      }
+    }
+
+    // Advance turn
+    const curIdx  = game.turnOrder.indexOf(uid)
+    const nextUid = game.turnOrder[(curIdx + 1) % game.turnOrder.length]
+
+    // Update team stats
+    const newTeams = { ...(game.teams || {}) }
+    if (!oneEyed && newBoard[cellId]) {
+      const tm = newTeams[myTeam] || {}
+      newTeams[myTeam] = {
+        ...tm,
+        chipsOnBoard:       (tm.chipsOnBoard||0) + 1,
+        sequencesCompleted: (tm.sequencesCompleted||0) + newSeqs.length,
+      }
+    }
+
+    // Log
+    const logEntry = {
+      id: `log_${Date.now()}`, ts: Date.now(), uid,
+      username: players[uid]?.username || 'Player',
+      team: myTeam, card: cardCode, cell: cellId,
+      action: oneEyed ? 'removeChip' : twoEyed ? 'wildJack' : 'place',
+      resultedInSequence: newSeqs.length > 0,
+    }
+
+    await update(ref(db, '/'), {
+      [`rooms/${roomCode}/game/board`]:          newBoard,
+      [`rooms/${roomCode}/game/deck`]:           newDeck,
+      [`rooms/${roomCode}/game/currentTurn`]:    nextUid,
+      [`rooms/${roomCode}/game/turnNumber`]:     (game.turnNumber||1) + 1,
+      [`rooms/${roomCode}/game/turnStartedAt`]:  Date.now(),
+      [`rooms/${roomCode}/game/deckRemaining`]:  newDeck.length,
+      [`rooms/${roomCode}/game/sequences`]:      [...existing, ...newSeqs],
+      [`rooms/${roomCode}/game/log/${logEntry.id}`]: logEntry,
+      [`rooms/${roomCode}/hands/${uid}`]:        newHand,
+      [`rooms/${roomCode}/teams`]:               newTeams,
+    })
+
+    selectedCard = null
+  } catch(e) {
+    toast(e.message || 'Move failed')
+  } finally {
+    playing = false
+  }
+}
+
+// ── Game log ──────────────────────────────────────────────────────────────────
+function renderLog() {
+  const log = gameState?.log ? Object.values(gameState.log).sort((a,b) => b.ts-a.ts) : []
+  const listEl = document.getElementById('log-list')
+  listEl.innerHTML = log.slice(0, 50).map(entry => {
+    const verb = entry.action === 'removeChip' ? 'removed a chip with' : 'played'
+    const seq  = entry.resultedInSequence ? ' 🔥' : ''
+    return `<div class="log-entry">
+      <strong>${entry.username}</strong> ${verb} ${entry.card}${seq}
+    </div>`
+  }).join('')
+}
+
+// ── Win detection ─────────────────────────────────────────────────────────────
+function checkWin() {
+  if (!teams || !settings.sequencesToWin) return
+  const tc = settings.teamCount || 2
+  const activeTeams = TEAMS.slice(0, tc)
+  for (const team of activeTeams) {
+    if ((teams[team]?.sequencesCompleted||0) >= settings.sequencesToWin) {
+      showWin(team)
+      return
+    }
+  }
+}
+
+function showWin(team) {
+  document.getElementById('win-screen').classList.add('open')
+  document.getElementById('win-team-name').textContent = TEAM_NAMES[team]
+  document.getElementById('win-team-name').style.color = TEAM_COLORS[team]
+  document.getElementById('win-subtitle').textContent = `${TEAM_NAMES[team]} team wins!`
+}
+
+document.getElementById('win-lobby').addEventListener('click', () => go(`lobby.html?room=${roomCode}`))
+document.getElementById('win-home').addEventListener('click', () => go('index.html'))
+</script>
+</body>
+</html>

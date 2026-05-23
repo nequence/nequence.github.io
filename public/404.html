@@ -1,14 +1,14 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <script>
-    // SPA redirect: GitHub Pages returns 404 for unknown paths.
-    // Save the path and redirect to / so React Router can handle it.
-    const path = window.location.pathname + window.location.search + window.location.hash
-    sessionStorage.setItem('redirect', path)
-    window.location.replace('/')
-  </script>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Not Found — Nequence</title>
+  <link rel="stylesheet" href="css/style.css"/>
 </head>
-<body></body>
+<body style="height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:var(--bg-void)">
+  <div style="font-family:var(--font-brand);font-size:36px;font-weight:800">NEQUENCE</div>
+  <div style="color:var(--text-muted)">Page not found</div>
+  <a href="index.html" class="btn btn-secondary" style="text-decoration:none;margin-top:8px">← Back to home</a>
+</body>
 </html>

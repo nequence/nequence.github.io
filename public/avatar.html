@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no"/>
+  <title>Choose Your Avatar — Nequence</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+<div id="avatar-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <button class="btn-ghost" onclick="history.back()">← Back</button>
+    <span style="font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:.06em">CHOOSE YOUR AVATAR</span>
+    <span class="mono" style="font-size:12px;color:var(--text-muted)" id="header-code"></span>
+  </div>
+
+  <!-- Two-column layout -->
+  <div class="avatar-layout">
+
+    <!-- LEFT: Preview -->
+    <div class="avatar-preview-panel">
+      <div class="avatar-frame" id="avatar-preview"></div>
+
+      <div style="width:100%">
+        <div class="section-label">DISPLAY NAME</div>
+        <input class="input" id="name-input" placeholder="Enter name…" maxlength="16"
+               style="text-align:center"/>
+        <div id="name-error" style="color:#888;font-size:12px;text-align:center;margin-top:6px;display:none">
+          Enter a name to continue
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="continue-btn">Continue →</button>
+    </div>
+
+    <!-- RIGHT: Builder -->
+    <div class="avatar-builder">
+
+      <!-- Tabs -->
+      <div class="tab-bar" id="tab-bar">
+        <button class="tab-btn active" data-tab="skin">Skin</button>
+        <button class="tab-btn" data-tab="hair">Hair</button>
+        <button class="tab-btn" data-tab="face">Face</button>
+        <button class="tab-btn" data-tab="outfit">Outfit</button>
+        <button class="tab-btn" data-tab="accessory">Accessories</button>
+      </div>
+
+      <!-- Options -->
+      <div class="tab-content">
+
+        <!-- Skin tab -->
+        <div class="tab-panel active" id="tab-skin">
+          <div class="section-label">SKIN TONE</div>
+          <div class="swatch-row" id="skin-swatches"></div>
+        </div>
+
+        <!-- Hair tab -->
+        <div class="tab-panel" id="tab-hair">
+          <div class="option-grid" id="hair-options"></div>
+          <div class="section-label">HAIR COLOR</div>
+          <div class="swatch-row" id="hair-color-swatches"></div>
+        </div>
+
+        <!-- Face tab -->
+        <div class="tab-panel" id="tab-face">
+          <div class="option-grid" id="face-options"></div>
+        </div>
+
+        <!-- Outfit tab -->
+        <div class="tab-panel" id="tab-outfit">
+          <div class="section-label">SHIRT COLOR</div>
+          <div class="swatch-row" id="shirt-swatches" style="gap:12px"></div>
+          <p style="font-size:13px;color:var(--text-muted);margin-top:20px">Everyone starts in a t-shirt — pick your color.</p>
+        </div>
+
+        <!-- Accessories tab -->
+        <div class="tab-panel" id="tab-accessory">
+          <div class="option-grid" id="accessory-options"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { db, ref, get, set, update, getUid, go, toast } from './js/db.js'
+import { renderAvatar, SKIN_TONES, HAIR_COLORS, SHIRT_COLORS } from './js/avatar.js'
+
+const params   = new URLSearchParams(location.search)
+const roomCode = params.get('room')
+const uid      = getUid()
+
+if (!roomCode) go('index.html')
+
+document.getElementById('header-code').textContent = roomCode
+
+// ── Avatar state ──────────────────────────────────────────────────────────────
+let avatar = { skin:0, outfit:0, hairStyle:0, hairColor:0, expression:0, accessory:0 }
+let savedName = localStorage.getItem('nequence_name') || ''
+
+const nameInput = document.getElementById('name-input')
+nameInput.value = savedName
+nameInput.addEventListener('input', () => {
+  savedName = nameInput.value.slice(0, 16)
+  nameInput.value = savedName
+  localStorage.setItem('nequence_name', savedName)
+  document.getElementById('name-error').style.display = 'none'
+})
+
+// ── Render preview ────────────────────────────────────────────────────────────
+function refreshPreview() {
+  document.getElementById('avatar-preview').innerHTML = renderAvatar(avatar, 220)
+}
+refreshPreview()
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+document.getElementById('tab-bar').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-btn')
+  if (!btn) return
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'))
+  btn.classList.add('active')
+  document.getElementById('tab-' + btn.dataset.tab).classList.add('active')
+})
+
+// ── Skin swatches ─────────────────────────────────────────────────────────────
+const skinWrap = document.getElementById('skin-swatches')
+SKIN_TONES.forEach((c, i) => {
+  const btn = document.createElement('button')
+  btn.className = 'swatch' + (i === 0 ? ' selected' : '')
+  btn.style.background = c
+  btn.title = 'Skin tone ' + (i+1)
+  btn.addEventListener('click', () => {
+    avatar.skin = i
+    skinWrap.querySelectorAll('.swatch').forEach((b,j) => b.classList.toggle('selected', j===i))
+    refreshPreview()
+  })
+  skinWrap.appendChild(btn)
+})
+
+// ── Hair style tiles ──────────────────────────────────────────────────────────
+const HAIR_LABELS = ['Short','Medium','Long','Curly','Fade','Bun','Braids','Afro','Mohawk','Ponytail']
+const hairWrap = document.getElementById('hair-options')
+HAIR_LABELS.forEach((label, i) => {
+  const btn = makeTile(label, i === 0)
+  btn.addEventListener('click', () => {
+    avatar.hairStyle = i
+    hairWrap.querySelectorAll('.option-tile').forEach((b,j) => b.classList.toggle('selected', j===i))
+    refreshPreview()
+  })
+  hairWrap.appendChild(btn)
+})
+
+// ── Hair color swatches ───────────────────────────────────────────────────────
+const hairColorWrap = document.getElementById('hair-color-swatches')
+HAIR_COLORS.forEach((c, i) => {
+  const btn = document.createElement('button')
+  btn.className = 'swatch' + (i === 0 ? ' selected' : '')
+  btn.style.background = c
+  btn.addEventListener('click', () => {
+    avatar.hairColor = i
+    hairColorWrap.querySelectorAll('.swatch').forEach((b,j) => b.classList.toggle('selected', j===i))
+    refreshPreview()
+  })
+  hairColorWrap.appendChild(btn)
+})
+
+// ── Face expression tiles ─────────────────────────────────────────────────────
+const FACE_LABELS = ['Neutral','Smile','Smirk','Focused','Fierce','Chill']
+const faceWrap = document.getElementById('face-options')
+FACE_LABELS.forEach((label, i) => {
+  const btn = makeTile(label, i === 0)
+  btn.addEventListener('click', () => {
+    avatar.expression = i
+    faceWrap.querySelectorAll('.option-tile').forEach((b,j) => b.classList.toggle('selected', j===i))
+    refreshPreview()
+  })
+  faceWrap.appendChild(btn)
+})
+
+// ── Shirt color swatches (square) ─────────────────────────────────────────────
+const shirtWrap = document.getElementById('shirt-swatches')
+SHIRT_COLORS.forEach((c, i) => {
+  const btn = document.createElement('button')
+  btn.className = 'swatch-rect' + (i === 0 ? ' selected' : '')
+  btn.style.background = c
+  btn.addEventListener('click', () => {
+    avatar.outfit = i
+    shirtWrap.querySelectorAll('.swatch-rect').forEach((b,j) => b.classList.toggle('selected', j===i))
+    refreshPreview()
+  })
+  shirtWrap.appendChild(btn)
+})
+
+// ── Accessory tiles ───────────────────────────────────────────────────────────
+const ACC_LABELS = ['None','Round Glasses','Cap','Studs','Rect Glasses','Hoops','Headband']
+const accWrap = document.getElementById('accessory-options')
+ACC_LABELS.forEach((label, i) => {
+  const btn = makeTile(label, i === 0)
+  btn.addEventListener('click', () => {
+    avatar.accessory = i
+    accWrap.querySelectorAll('.option-tile').forEach((b,j) => b.classList.toggle('selected', j===i))
+    refreshPreview()
+  })
+  accWrap.appendChild(btn)
+})
+
+// ── Continue ──────────────────────────────────────────────────────────────────
+document.getElementById('continue-btn').addEventListener('click', handleContinue)
+
+async function handleContinue() {
+  const username = nameInput.value.trim()
+  if (!username) {
+    document.getElementById('name-error').style.display = 'block'
+    return
+  }
+  const btn = document.getElementById('continue-btn')
+  btn.disabled = true
+  btn.textContent = 'Saving…'
+
+  try {
+    // Check if room still exists
+    const metaSnap = await get(ref(db, `rooms/${roomCode}/meta`))
+    if (!metaSnap.exists()) { toast('Room no longer exists'); go('index.html'); return }
+
+    const playerRef  = ref(db, `rooms/${roomCode}/players/${uid}`)
+    const playerSnap = await get(playerRef)
+
+    if (playerSnap.exists()) {
+      // Existing player — just update name + avatar
+      await update(playerRef, { username, avatar })
+    } else {
+      // New joiner via invite link — assign to least-populated team
+      const playersSnap = await get(ref(db, `rooms/${roomCode}/players`))
+      const all = playersSnap.val() || {}
+      const counts = { aether:0, nova:0, pulse:0, void:0 }
+      const teamCount = metaSnap.val()?.settings?.teamCount || 2
+      const activeTeams = ['aether','nova','pulse','void'].slice(0, teamCount)
+      Object.values(all).forEach(p => { if (counts[p.team] !== undefined) counts[p.team]++ })
+      const assignedTeam = activeTeams.reduce((a,b) => counts[a] <= counts[b] ? a : b)
+
+      await set(playerRef, {
+        uid, username, isHost: false,
+        team: assignedTeam,
+        joinedAt: Date.now(), connected: true,
+        avatar,
+      })
+    }
+
+    // If game is already playing, go straight to game
+    const status = metaSnap.val()?.status
+    if (status === 'playing') go(`game.html?room=${roomCode}`)
+    else go(`lobby.html?room=${roomCode}`)
+
+  } catch(e) {
+    console.error(e)
+    toast('Failed to save — please try again')
+    btn.disabled = false
+    btn.textContent = 'Continue →'
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function makeTile(label, selected) {
+  const btn = document.createElement('button')
+  btn.className = 'option-tile' + (selected ? ' selected' : '')
+  btn.textContent = label
+  return btn
+}
+</script>
+</body>
+</html>
