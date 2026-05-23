@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no"/>
+  <title>Lobby — Nequence</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+<div id="lobby-page">
+  <canvas id="particle-canvas"></canvas>
+
+  <!-- Header -->
+  <div class="page-header" style="position:relative;z-index:10">
+    <div class="brand" style="font-size:17px;letter-spacing:.08em">NEQUENCE</div>
+    <button class="btn-ghost" id="howto-btn" style="border:1px solid var(--border-dim);border-radius:6px;padding:4px 12px;font-size:13px;color:var(--text-muted)">?</button>
+  </div>
+
+  <div class="lobby-body">
+
+    <!-- Hero: avatar + room code + copy -->
+    <div class="lobby-hero">
+      <div class="lobby-avatar-wrap" id="my-avatar-wrap"></div>
+      <div style="font-size:15px;font-weight:600;color:var(--text-primary)" id="my-name">—</div>
+
+      <div class="lobby-room-code" id="room-code-display"></div>
+
+      <button class="copy-btn" id="copy-btn">
+        <svg id="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2"/>
+          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+        </svg>
+        <span id="copy-label">Copy invite link</span>
+      </button>
+    </div>
+
+    <!-- Center: teams + actions -->
+    <div class="lobby-center">
+      <div class="team-grid" id="team-grid"></div>
+
+      <div class="lobby-actions">
+        <button class="btn btn-primary" id="start-btn" style="display:none">Start Game</button>
+        <button class="btn btn-secondary" onclick="go('index.html')">Leave</button>
+        <div id="start-status" style="font-size:13px;color:var(--text-muted);align-self:center"></div>
+      </div>
+    </div>
+
+    <!-- Settings (host only) -->
+    <div class="lobby-settings" id="host-settings" style="display:none">
+      <div class="settings-panel">
+        <h3>SETTINGS</h3>
+
+        <div class="setting-row">
+          <span>Teams</span>
+          <select id="set-teams">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+
+        <div class="setting-row">
+          <span>Timer</span>
+          <select id="set-timer">
+            <option value="0">None</option>
+            <option value="30">30s</option>
+            <option value="60" selected>60s</option>
+            <option value="90">90s</option>
+            <option value="120">120s</option>
+          </select>
+        </div>
+
+        <div class="setting-row">
+          <label for="set-confirm">Confirm moves</label>
+          <input type="checkbox" id="set-confirm" checked/>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- How to play -->
+<div class="overlay" id="howto-overlay">
+  <div class="modal">
+    <h2>How to Play</h2>
+    <ul class="howto-list">
+      <li>Play a card from your hand to place a chip on the matching board square.</li>
+      <li>Get 5 chips in a row (horizontal, vertical, diagonal) to form a sequence.</li>
+      <li>Two-eyed Jacks are wild — place anywhere. One-eyed Jacks remove an opponent's chip.</li>
+      <li>Corner squares are free for all teams.</li>
+      <li>First team to reach the sequence target wins!</li>
+    </ul>
+    <div style="margin-top:20px">
+      <button class="btn btn-secondary btn-full" onclick="document.getElementById('howto-overlay').classList.remove('open')">Got it</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { db, ref, get, set, update, onValue, off, getUid, go, toast } from './js/db.js'
+import { renderAvatar } from './js/avatar.js'
+import { buildDeck, handSizeForPlayers, sequencesToWinFor } from './js/cards.js'
+
+const params   = new URLSearchParams(location.search)
+const roomCode = params.get('room')
+const uid      = getUid()
+
+if (!roomCode) go('index.html')
+
+document.getElementById('room-code-display').textContent = roomCode
+document.getElementById('howto-btn').addEventListener('click', () =>
+  document.getElementById('howto-overlay').classList.add('open'))
+document.getElementById('howto-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open')
+})
+
+const TEAMS = ['aether','nova','pulse','void']
+const TEAM_COLORS = { aether:'#7C3AED', nova:'#D97706', pulse:'#E11D48', void:'#0D9488' }
+const TEAM_NAMES  = { aether:'Aether', nova:'Nova', pulse:'Pulse', void:'Void' }
+
+let roomData = { meta:{}, players:{} }
+let settings = { teamCount:2, turnTimerSeconds:60, confirmPlacement:true }
+let isHost = false
+
+// ── Firebase listeners ────────────────────────────────────────────────────────
+const roomRef = ref(db, `rooms/${roomCode}`)
+onValue(roomRef, snap => {
+  const data = snap.val()
+  if (!data) { go('index.html'); return }
+  roomData = data
+
+  if (data.meta?.status === 'playing') { go(`game.html?room=${roomCode}`); return }
+
+  isHost = data.meta?.host === uid
+  if (data.meta?.settings) Object.assign(settings, data.meta.settings)
+
+  renderLobby()
+  updateHostUI()
+})
+
+function renderLobby() {
+  const { players = {}, meta = {} } = roomData
+  const tc = settings.teamCount || 2
+  const activeTeams = TEAMS.slice(0, tc)
+
+  // My avatar
+  const me = players[uid]
+  if (me) {
+    document.getElementById('my-avatar-wrap').innerHTML = renderAvatar(me.avatar || {}, 160, me.team)
+    document.getElementById('my-name').textContent = me.username || '(no name)'
+  }
+
+  // Team columns
+  const grid = document.getElementById('team-grid')
+  grid.style.gridTemplateColumns = `repeat(${tc}, 1fr)`
+  grid.innerHTML = ''
+  const myCurrentTeam = players[uid]?.team
+
+  for (const team of activeTeams) {
+    const teamPlayers = Object.values(players).filter(p => p.team === team)
+    const isMyTeam = myCurrentTeam === team
+    const col = document.createElement('div')
+    col.className = 'team-col'
+    col.innerHTML = `
+      <div class="team-header">
+        <div class="team-dot" style="background:${TEAM_COLORS[team]}"></div>
+        <span class="team-name">${TEAM_NAMES[team]}</span>
+        <span style="font-size:12px;color:var(--text-muted);margin-left:auto">${teamPlayers.length}</span>
+      </div>
+      <div class="team-players">
+        ${teamPlayers.map(p => `
+          <div class="player-card" style="${p.uid === uid ? 'background:rgba(255,255,255,0.07);' : ''}">
+            <div style="width:36px;height:48px;border-radius:7px;overflow:hidden;flex-shrink:0;background:rgba(255,255,255,0.03)">
+              ${renderAvatar(p.avatar||{}, 36, p.team)}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div class="pname" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.username || '(unnamed)'}</div>
+              ${p.uid === meta.host ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">HOST</div>' : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      ${!isMyTeam ? `
+        <div style="padding:8px;border-top:1px solid var(--border-dim);flex-shrink:0">
+          <button class="btn btn-secondary btn-full" style="font-size:12px;padding:7px;"
+            data-join-team="${team}">Join ${TEAM_NAMES[team]}</button>
+        </div>` : `
+        <div style="padding:8px;border-top:1px solid var(--border-dim);flex-shrink:0;text-align:center">
+          <span style="font-size:12px;color:${TEAM_COLORS[team]};font-weight:600">← You're here</span>
+        </div>`}
+    `
+    grid.appendChild(col)
+  }
+
+  // Click "Join" to switch teams
+  grid.querySelectorAll('[data-join-team]').forEach(btn => {
+    btn.addEventListener('click', () => moveToTeam(btn.dataset.joinTeam))
+  })
+
+  // Start button visibility
+  const playerList = Object.values(players)
+  const canStart = isHost && playerList.length >= 2
+  document.getElementById('start-btn').style.display = isHost ? '' : 'none'
+  document.getElementById('start-btn').disabled = !canStart
+  document.getElementById('start-status').textContent =
+    !isHost ? 'Waiting for host to start…' :
+    playerList.length < 2 ? 'Need at least 2 players' : ''
+}
+
+function updateHostUI() {
+  const panel = document.getElementById('host-settings')
+  panel.style.display = isHost ? '' : 'none'
+  if (isHost) {
+    document.getElementById('set-teams').value = settings.teamCount
+    document.getElementById('set-timer').value = settings.turnTimerSeconds
+    document.getElementById('set-confirm').checked = !!settings.confirmPlacement
+  }
+}
+
+async function moveToTeam(team) {
+  const me = (roomData.players || {})[uid]
+  if (!me || me.team === team) return
+  await update(ref(db, `rooms/${roomCode}/players/${uid}`), { team }).catch(console.error)
+}
+
+// ── Settings (host only) ──────────────────────────────────────────────────────
+async function saveSettings() {
+  if (!isHost) return
+  settings = {
+    teamCount:       parseInt(document.getElementById('set-teams').value),
+    turnTimerSeconds:parseInt(document.getElementById('set-timer').value),
+    confirmPlacement:document.getElementById('set-confirm').checked,
+  }
+  await update(ref(db, `rooms/${roomCode}/meta/settings`), settings).catch(console.error)
+}
+document.getElementById('set-teams').addEventListener('change', saveSettings)
+document.getElementById('set-timer').addEventListener('change', saveSettings)
+document.getElementById('set-confirm').addEventListener('change', saveSettings)
+
+// ── Copy invite link ──────────────────────────────────────────────────────────
+document.getElementById('copy-btn').addEventListener('click', () => {
+  const url = `${location.origin}/avatar.html?room=${roomCode}`
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('copy-btn')
+    const label = document.getElementById('copy-label')
+    const icon  = document.getElementById('copy-icon')
+    btn.classList.add('copied')
+    label.textContent = 'Copied!'
+    icon.innerHTML = '<polyline points="20 6 9 17 4 12" stroke="#a0f0a0" stroke-width="2.5" fill="none" stroke-linecap="round"/>'
+    setTimeout(() => {
+      btn.classList.remove('copied')
+      label.textContent = 'Copy invite link'
+      icon.innerHTML = `<rect x="9" y="9" width="13" height="13" rx="2"/>
+        <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>`
+    }, 2200)
+  }).catch(() => toast('Could not copy — try manually'))
+})
+
+// ── Start game ────────────────────────────────────────────────────────────────
+document.getElementById('start-btn').addEventListener('click', handleStart)
+
+async function handleStart() {
+  if (!isHost) return
+  const btn = document.getElementById('start-btn')
+  btn.disabled = true; btn.textContent = 'Starting…'
+
+  try {
+    const { players = {}, meta = {} } = roomData
+    const playerList = Object.values(players)
+    if (playerList.length < 2) { toast('Need at least 2 players'); btn.disabled=false; btn.textContent='Start Game'; return }
+
+    const tc = settings.teamCount || 2
+    const activeTeams = TEAMS.slice(0, tc)
+    const tc_players  = playerList.length
+
+    // Build deck & deal hands
+    const deck = buildDeck()
+    const hs   = handSizeForPlayers(tc_players)
+    const hands = {}
+    let   deckIdx = 0
+    for (const p of playerList) {
+      hands[p.uid] = deck.slice(deckIdx, deckIdx + hs)
+      deckIdx += hs
+    }
+    const remaining = deck.slice(deckIdx)
+
+    // Turn order: round-robin by team
+    const byTeam = {}
+    for (const t of activeTeams) byTeam[t] = []
+    for (const p of playerList) {
+      const t = activeTeams.includes(p.team) ? p.team : activeTeams[0]
+      byTeam[t].push(p.uid)
+    }
+    const maxSlots = Math.max(...activeTeams.map(t => byTeam[t].length))
+    const turnOrder = []
+    for (let i = 0; i < maxSlots; i++)
+      for (const t of activeTeams) if (byTeam[t][i]) turnOrder.push(byTeam[t][i])
+
+    const teamState = {}
+    for (const t of activeTeams) teamState[t] = { sequencesCompleted:0, chipsOnBoard:0 }
+
+    const seqTarget = settings.sequencesToWin || sequencesToWinFor(tc, tc_players)
+
+    const updates = {}
+    updates[`rooms/${roomCode}/meta/status`] = 'playing'
+    updates[`rooms/${roomCode}/game`] = {
+      board: {}, deck: remaining, currentTurn: turnOrder[0],
+      turnNumber: 1, turnOrder, turnStartedAt: Date.now(),
+      deckRemaining: remaining.length, sequences: [],
+      teams: teamState,
+      settings: { ...settings, sequencesToWin: seqTarget },
+    }
+    updates[`rooms/${roomCode}/teams`] = teamState
+    for (const [puid, hand] of Object.entries(hands)) {
+      updates[`rooms/${roomCode}/hands/${puid}`] = hand
+    }
+
+    await update(ref(db, '/'), updates)
+  } catch(e) {
+    console.error(e)
+    toast('Failed to start game')
+    btn.disabled = false; btn.textContent = 'Start Game'
+  }
+}
+
+// ── Particle canvas ───────────────────────────────────────────────────────────
+const canvas = document.getElementById('particle-canvas')
+const ctx = canvas.getContext('2d')
+let particles = [], mouse = { x:-999, y:-999 }, animId
+
+function resize() {
+  canvas.width  = window.innerWidth
+  canvas.height = window.innerHeight
+}
+resize()
+window.addEventListener('resize', resize)
+window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY })
+
+for (let i = 0; i < 70; i++) {
+  particles.push({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.4,
+  })
+}
+
+function drawParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  for (const p of particles) {
+    p.x += p.vx; p.y += p.vy
+    if (p.x < 0) p.x = canvas.width
+    if (p.x > canvas.width) p.x = 0
+    if (p.y < 0) p.y = canvas.height
+    if (p.y > canvas.height) p.y = 0
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, 1.5, 0, Math.PI*2)
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'
+    ctx.fill()
+  }
+  // Lines between close particles
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i+1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x, dy = particles[i].y - particles[j].y
+      const d = Math.sqrt(dx*dx + dy*dy)
+      if (d < 130) {
+        ctx.beginPath()
+        ctx.moveTo(particles[i].x, particles[i].y)
+        ctx.lineTo(particles[j].x, particles[j].y)
+        ctx.strokeStyle = `rgba(255,255,255,${(1 - d/130) * 0.12})`
+        ctx.stroke()
+      }
+    }
+    // Lines to mouse
+    const dx = particles[i].x - mouse.x, dy = particles[i].y - mouse.y
+    const d = Math.sqrt(dx*dx + dy*dy)
+    if (d < 160) {
+      ctx.beginPath()
+      ctx.moveTo(particles[i].x, particles[i].y)
+      ctx.lineTo(mouse.x, mouse.y)
+      ctx.strokeStyle = `rgba(255,255,255,${(1 - d/160) * 0.28})`
+      ctx.stroke()
+    }
+  }
+  animId = requestAnimationFrame(drawParticles)
+}
+drawParticles()
+</script>
+</body>
+</html>

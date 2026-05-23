@@ -23,13 +23,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp index.html avatar.html lobby.html game.html 404.html favicon.svg _site/
+          cp -r css js _site/
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment
