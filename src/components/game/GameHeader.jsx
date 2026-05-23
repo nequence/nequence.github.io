@@ -24,7 +24,7 @@ export default function GameHeader({ roomCode, currentPlayer, players = {}, game
         gap: '16px', flexShrink: 0,
       }}>
         {/* Logo */}
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '16px', letterSpacing: '0.08em', color: 'var(--text-primary)', flexShrink: 0 }}>
+        <div style={{ fontFamily: 'var(--font-brand)', fontWeight: 800, fontSize: '16px', letterSpacing: '0.08em', color: 'var(--text-primary)', flexShrink: 0 }}>
           NEQUENCE
         </div>
 

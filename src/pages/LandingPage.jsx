@@ -80,7 +80,7 @@ export default function LandingPage() {
           {/* Logo block */}
           <motion.div variants={item} style={{ textAlign: 'center' }}>
             <div style={{
-              fontFamily: 'var(--font-display)',
+              fontFamily: 'var(--font-brand)',
               fontWeight: 800,
               fontSize: 'clamp(28px, 6.5vw, 46px)',
               letterSpacing: '0.05em',

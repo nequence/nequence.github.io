@@ -175,7 +175,7 @@ export default function LobbyRoom() {
             padding: '14px 28px', borderBottom: '1px solid var(--border-dim)',
             background: 'rgba(8,8,8,0.7)', backdropFilter: 'blur(12px)',
           }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17, letterSpacing: '0.08em' }}>NEQUENCE</div>
+            <div style={{ fontFamily: 'var(--font-brand)', fontWeight: 800, fontSize: 17, letterSpacing: '0.08em' }}>NEQUENCE</div>
             <button onClick={() => setHelpOpen(true)} style={{ background: 'none', border: '1px solid var(--border-dim)', borderRadius: 6, color: 'var(--text-muted)', padding: '4px 12px', cursor: 'pointer', fontSize: 13 }}>?</button>
           </header>
 

@@ -40,6 +40,7 @@
   --signal-gold:    rgba(255, 255, 255, 0.80);
 
   /* Typography */
+  --font-brand:     'Montserrat', sans-serif;
   --font-display:   'Space Grotesk', sans-serif;
   --font-body:      'DM Sans', sans-serif;
   --font-mono:      'JetBrains Mono', monospace;
