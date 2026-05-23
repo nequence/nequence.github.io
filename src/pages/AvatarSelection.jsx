@@ -1,20 +1,19 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ref, update } from 'firebase/database'
+import { ref, update, get, set } from 'firebase/database'
 import { db } from '../firebase'
 import useGameStore from '../store/useGameStore'
-import AvatarLayers from '../components/avatar/AvatarLayers'
+import AvatarLayers, { HAIR_COLORS, SHIRT_COLORS } from '../components/avatar/AvatarLayers'
 import PageTransition from '../components/layout/PageTransition'
 
-const SKIN_TONES  = ['#FDDBB4','#F1C27D','#E0AC69','#C68642','#8D5524','#4A2511']
-const HAIR_COLORS = ['#1a1a1a','#3B1F0A','#7B3F00','#C49A6C','#F5D76E','#E8E8E8','#D94F5C','#7B2FBE','#2563EB','#16A34A','#EA580C','#0891B2']
+const SKIN_TONES = ['#FDDBB4','#F1C27D','#E0AC69','#C68642','#8D5524','#4A2511']
 
 const SECTIONS = {
   Body:        { key: 'body',       options: ['Standard','Broad','Slim','Athletic'] },
   Hair:        { key: 'hairStyle',  options: ['Short','Medium','Long','Curly','Fade','Bun','Braids','Afro','Mohawk','Ponytail'] },
   Face:        { key: 'expression', options: ['Neutral','Smile','Smirk','Focused','Fierce','Chill'] },
-  Outfit:      { key: 'outfit',     options: ['Hoodie','Jacket','T-Shirt','Turtleneck','Zip-Up','Striped','Bomber','Parka'] },
+  Outfit:      { key: 'outfit',     options: [] },   // no style tiles — shirt color only
   Accessories: { key: 'accessory',  options: ['None','Round Glasses','Cap','Studs','Rect Glasses','Hoops','Headband'] },
 }
 const TABS = Object.keys(SECTIONS)
@@ -38,13 +37,41 @@ export default function AvatarSelection() {
     if (!myUsername.trim()) { setNameError(true); return }
     setSaving(true)
     try {
-      await update(ref(db, `rooms/${roomCode}/players/${uid}`), { username: myUsername.trim(), avatar: myAvatar })
+      const playerRef = ref(db, `rooms/${roomCode}/players/${uid}`)
+      const snap = await get(playerRef)
+
+      if (snap.exists()) {
+        // Existing record — just update name + avatar
+        await update(playerRef, { username: myUsername.trim(), avatar: myAvatar })
+      } else {
+        // New joiner arriving via invite link — assign to least-populated team
+        const playersSnap = await get(ref(db, `rooms/${roomCode}/players`))
+        const players = playersSnap.val() || {}
+        const counts = { aether: 0, nova: 0 }
+        Object.values(players).forEach(p => {
+          if (p.team === 'aether') counts.aether++
+          else if (p.team === 'nova') counts.nova++
+        })
+        const assignedTeam = counts.aether <= counts.nova ? 'aether' : 'nova'
+        await set(playerRef, {
+          uid,
+          username: myUsername.trim(),
+          isHost: false,
+          team: assignedTeam,
+          joinedAt: Date.now(),
+          connected: true,
+          avatar: myAvatar,
+        })
+      }
+
       navigate(`/lobby/${roomCode}`)
     } catch (e) { console.error(e) } finally { setSaving(false) }
   }
 
   const { key, options } = SECTIONS[activeTab]
-  const isHairTab = activeTab === 'Hair'
+  const isHairTab    = activeTab === 'Hair'
+  const isOutfitTab  = activeTab === 'Outfit'
+  const isBodyTab    = activeTab === 'Body'
 
   return (
     <PageTransition>
@@ -68,7 +95,7 @@ export default function AvatarSelection() {
         <div style={{
           flex: 1,
           display: 'grid',
-          gridTemplateColumns: '280px 1fr',
+          gridTemplateColumns: '360px 1fr',
           gap: 0,
           overflow: 'hidden',
         }}>
@@ -79,22 +106,25 @@ export default function AvatarSelection() {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '24px',
-            padding: '40px 32px',
+            gap: '28px',
+            padding: '40px 40px',
             borderRight: '1px solid var(--border-dim)',
             background: 'var(--bg-void)',
           }}>
-            {/* Avatar circle */}
+            {/* Full-body avatar frame */}
             <div style={{
-              width: 200, height: 200,
-              borderRadius: '50%',
-              background: 'rgba(255,255,255,0.04)',
+              width: 220,
+              height: 294,   /* 3:4 ratio matching 120×160 viewBox */
+              borderRadius: '16px',
+              background: 'rgba(255,255,255,0.03)',
               border: '1px solid var(--border-subtle)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               overflow: 'hidden',
               flexShrink: 0,
             }}>
-              <AvatarLayers config={myAvatar} size={200} />
+              <AvatarLayers config={myAvatar} size={220} />
             </div>
 
             {/* Name input */}
@@ -196,39 +226,42 @@ export default function AvatarSelection() {
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.15 }}
                 >
-                  {/* Option tiles */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px', marginBottom: isHairTab ? '32px' : 0 }}>
-                    {options.map((label, i) => {
-                      const selected = myAvatar[key] === i
-                      return (
-                        <motion.button
-                          key={i}
-                          onClick={() => setKey(key, i)}
-                          whileHover={{ background: 'rgba(255,255,255,0.08)' }}
-                          whileTap={{ scale: 0.97 }}
-                          style={{
-                            padding: '12px 14px',
-                            background: selected ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.03)',
-                            border: selected ? '1px solid rgba(255,255,255,0.35)' : '1px solid var(--border-dim)',
-                            borderRadius: '8px',
-                            color: selected ? 'var(--text-primary)' : 'var(--text-secondary)',
-                            fontFamily: 'var(--font-body)',
-                            fontSize: '13px',
-                            fontWeight: selected ? 600 : 400,
-                            cursor: 'pointer',
-                            textAlign: 'center',
-                            transition: 'border 0.12s, color 0.12s',
-                          }}
-                        >
-                          {label}
-                        </motion.button>
-                      )
-                    })}
-                  </div>
+
+                  {/* Style option tiles (not shown for Outfit) */}
+                  {options.length > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px', marginBottom: isHairTab || isBodyTab ? '32px' : 0 }}>
+                      {options.map((label, i) => {
+                        const selected = myAvatar[key] === i
+                        return (
+                          <motion.button
+                            key={i}
+                            onClick={() => setKey(key, i)}
+                            whileHover={{ background: 'rgba(255,255,255,0.08)' }}
+                            whileTap={{ scale: 0.97 }}
+                            style={{
+                              padding: '12px 14px',
+                              background: selected ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.03)',
+                              border: selected ? '1px solid rgba(255,255,255,0.35)' : '1px solid var(--border-dim)',
+                              borderRadius: '8px',
+                              color: selected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                              fontFamily: 'var(--font-body)',
+                              fontSize: '13px',
+                              fontWeight: selected ? 600 : 400,
+                              cursor: 'pointer',
+                              textAlign: 'center',
+                              transition: 'border 0.12s, color 0.12s',
+                            }}
+                          >
+                            {label}
+                          </motion.button>
+                        )
+                      })}
+                    </div>
+                  )}
 
                   {/* Skin tone swatches (Body tab) */}
-                  {activeTab === 'Body' && (
-                    <div style={{ marginTop: '32px' }}>
+                  {isBodyTab && (
+                    <div>
                       <p style={{ fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)', marginBottom: '12px' }}>
                         SKIN TONE
                       </p>
@@ -252,7 +285,7 @@ export default function AvatarSelection() {
 
                   {/* Hair color swatches (Hair tab) */}
                   {isHairTab && (
-                    <div style={{ marginTop: '32px' }}>
+                    <div>
                       <p style={{ fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)', marginBottom: '12px' }}>
                         HAIR COLOR
                       </p>
@@ -273,6 +306,41 @@ export default function AvatarSelection() {
                       </div>
                     </div>
                   )}
+
+                  {/* Shirt color swatches (Outfit tab) */}
+                  {isOutfitTab && (
+                    <div>
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)', marginBottom: '16px' }}>
+                        SHIRT COLOR
+                      </p>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        {SHIRT_COLORS.map((c, i) => {
+                          const selected = myAvatar.outfit === i
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => setKey('outfit', i)}
+                              style={{
+                                width: 44, height: 44,
+                                borderRadius: '10px',
+                                background: c,
+                                cursor: 'pointer',
+                                border: selected ? '2px solid rgba(255,255,255,0.75)' : '2px solid transparent',
+                                outline: selected ? '1px solid rgba(255,255,255,0.25)' : 'none',
+                                outlineOffset: '3px',
+                                transition: 'border 0.12s, transform 0.1s',
+                                transform: selected ? 'scale(1.12)' : 'scale(1)',
+                              }}
+                            />
+                          )
+                        })}
+                      </div>
+                      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '20px' }}>
+                        Everyone starts with a t-shirt — pick your color.
+                      </p>
+                    </div>
+                  )}
+
                 </motion.div>
               </AnimatePresence>
             </div>
