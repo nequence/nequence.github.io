@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+:root {
+  /* Backgrounds — pure black/dark-grey scale */
+  --bg-void:        #080808;
+  --bg-base:        #0E0E0E;
+  --bg-surface:     rgba(255, 255, 255, 0.04);
+  --bg-elevated:    rgba(255, 255, 255, 0.07);
+  --bg-hover:       rgba(255, 255, 255, 0.10);
+
+  /* Borders — white at varying opacity */
+  --border-dim:     rgba(255, 255, 255, 0.06);
+  --border-subtle:  rgba(255, 255, 255, 0.10);
+  --border-clear:   rgba(255, 255, 255, 0.18);
+  --border-active:  rgba(255, 255, 255, 0.40);
+
+  /* Text */
+  --text-primary:   #F0F0F0;
+  --text-secondary: #888888;
+  --text-muted:     #444444;
+
+  /* UI accent — white only (used for active states, CTAs) */
+  --accent:         rgba(255, 255, 255, 0.92);
+  --accent-dim:     rgba(255, 255, 255, 0.12);
+  --accent-border:  rgba(255, 255, 255, 0.35);
+
+  /* Team chip colors — only used on game board chips, NOT in chrome */
+  --team-aether:    #7C3AED;
+  --team-nova:      #D97706;
+  --team-pulse:     #E11D48;
+  --team-void:      #0D9488;
+
+  /* Card suits */
+  --suit-red:       #FF6B8A;
+  --suit-black:     #C8C8D8;
+
+  /* Signals */
+  --signal-valid:   rgba(255, 255, 255, 0.20);
+  --signal-invalid: rgba(255, 255, 255, 0.15);
+  --signal-gold:    rgba(255, 255, 255, 0.80);
+
+  /* Typography */
+  --font-display:   'Syne', sans-serif;
+  --font-body:      'DM Sans', sans-serif;
+  --font-mono:      'JetBrains Mono', monospace;
+
+  /* Spacing */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  40px;
+  --space-2xl: 64px;
+
+  /* Glass */
+  --glass-bg:     rgba(255, 255, 255, 0.04);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.09);
+  --glass-blur:   blur(24px) saturate(1.2);
+  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Bump up text readability everywhere */
+button, input, select, textarea { font-family: inherit; font-size: inherit; }
+
+.glass {
+  background: var(--glass-bg);
+  border: var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  border-radius: 16px;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 2px; }
